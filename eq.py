@@ -1,4 +1,8 @@
 import pandas as pd
+import csv
+import pathlib
+import sys
+import os
 
 
 def calculate_eq(main_table, subject_id):
@@ -62,7 +66,26 @@ def calculate_eq_map(main_table):
             for subject_id in set(main_table_df["SubjectID"])}
 
 
+def write_metric_map(name, metric_map, path):
+    pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w', encoding='utf8') as file:
+        writer = csv.DictWriter(file, fieldnames=["SubjectID", name], lineterminator='\n')
+        writer.writeheader()
+        for subject_id, value in metric_map.items():
+            writer.writerow({"SubjectID": subject_id, name: value})
+
+
 if __name__ == "__main__":
-    main_table_df = pd.read_csv("../PythonAST/data/pcrs/MainTable.csv")
-    # main_table_df = pd.read_csv("./MainTable.csv")
-    print(calculate_eq_map(main_table_df))
+    read_path = "./data"
+    write_path = "./out/EQ.csv"
+
+    if len(sys.argv) > 1:
+        read_path = sys.argv[1]
+    if len(sys.argv) > 2:
+        write_path = sys.argv[2]
+
+    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
+    eq_map = calculate_eq_map(main_table_df)
+    print(eq_map)
+    write_metric_map("ErrorQuotient", eq_map, write_path)
+
