@@ -9,7 +9,7 @@ Current analyses include:
 These analyze students' compilation behavior to create a single numerical metric that can be used to predict course success.
 
 These currently include:
-* **The Error Quotient** ([eq.py][eq.py]). Jadud, M. C. (2006). Methods and tools for exploring novice compilation behaviour. In Proceedings of the Third International Workshop on Computing Education Research (pp. 73–84). https://doi.org/10.1145/1151588.1151600
+* **The Error Quotient** ([eq.py](eq.py)). Jadud, M. C. (2006). Methods and tools for exploring novice compilation behaviour. In Proceedings of the Third International Workshop on Computing Education Research (pp. 73–84). https://doi.org/10.1145/1151588.1151600
 
 Each of these files takes 2 command line arguments:
 1) The path to ProgSnap2 repository (e.g. if you pass in "data" it will look for "data/MainTable.csv")
