@@ -12,13 +12,22 @@ def calculate_eq(main_table, subject_id):
         return None
 
     score = 0
+    pair_count = 0
     # Iterate through pairs of compile events, e1 and e2
     for i in range(len(compiles) - 1):
-        # Only look at consecutive compiles within a single assignment
-        # TODO: Confirm that this is in fact the case for the EQ
-        # TODO: Also use assignment ID if ProblemID is missing
-        if compiles["ProblemID"].iloc[i] != compiles["ProblemID"].iloc[i + 1]:
+        # Only look at consecutive compiles within a single assignment/problem/session
+        # TODO: Jadud (2006) doesn't specify whether a session can cross problems, but we assume not
+        changed_segments = False
+        for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
+            if segment_id not in compiles:
+                continue
+            if compiles[segment_id].iloc[i] != compiles[segment_id].iloc[i + 1]:
+                changed_segments = True
+                break
+        if changed_segments:
             continue
+
+        pair_count += 1
 
         # Get all compile errors associated with compile events e1 and e2
         # TODO: This is a hack to fix the problem with the current dataset using Order instead of ParentEvent
@@ -36,13 +45,16 @@ def calculate_eq(main_table, subject_id):
 
             # Get the set of errors shared by both compiles
             # TODO: Check how Jadud handled multiple compile errors (don't think he did)
-            shared_errors = set(e1_errors["CompileErrorType"]).intersection(set(e2_errors["CompileErrorType"]))
+            shared_errors = set(e1_errors["CompileMessageType"]).intersection(set(e2_errors["CompileMessageType"]))
             if len(shared_errors) > 0:
                 score_delta += 3
         score += score_delta
 
+    if pair_count == 0:
+        return None
+
     # Normalize the score by the maximum value and take the average
-    return (score / 11.) / (len(subject_events) - 1.)
+    return (score / 11.) / pair_count
 
 
 def calculate_eq_map(main_table):
@@ -51,5 +63,6 @@ def calculate_eq_map(main_table):
 
 
 if __name__ == "__main__":
-    main_table_df = pd.read_csv("./ProgSnap2Tables/MainTable.csv")
+    # main_table_df = pd.read_csv("../PythonAST/data/pcrs/MainTable.csv")
+    main_table_df = pd.read_csv("./MainTable.csv")
     print(calculate_eq_map(main_table_df))
