@@ -15,7 +15,21 @@ Each of these files takes 2 command line arguments:
 1) The path to ProgSnap2 repository (e.g. if you pass in "data" it will look for "data/MainTable.csv")
 2) The path for the output csv file (including the name of the file)
 
-If these are not supplied, it will defualt to "./data" and "./out/EQ.csv".
+If these are not supplied, it will default to "./data" and "./out/EQ.csv".
+
+## Adding Student Grades
+
+To see how the error metrics correlate with student grades (and each other), you can run the 
+[correlations.py](correlations.py) script. To do this, you will need to make sure your ProgSnap2
+dataset contains a Link Table under LinkTables/Subject.csv, containing the columns "SubjectID" and
+"X-Grade", which give the grades for the students in the course. Grade here can be any metric of
+course performance. 
+
+This script takes 2 command line arguments:
+1) The path to ProgSnap2 repository (e.g. if you pass in "data" it will look for "data/MainTable.csv")
+2) The path to the output directory where the prior metrics were stored
+
+If these are not supplied, it will default to "./data" and "./out/".
 
 ## Dependencies
 
