@@ -34,13 +34,8 @@ def calculate_eq(main_table, subject_id):
         pair_count += 1
 
         # Get all compile errors associated with compile events e1 and e2
-        # TODO: This is a hack to fix the problem with the current dataset using Order instead of ParentEvent
-        if compiles.dtypes["ParentEventID"] == float:
-            e1_errors = compile_errors[compile_errors["ParentEventID"] == compiles["Order"].iloc[i]]
-            e2_errors = compile_errors[compile_errors["ParentEventID"] == compiles["Order"].iloc[i + 1]]
-        else:
-            e1_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[i]]
-            e2_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[i + 1]]
+        e1_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[i]]
+        e2_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[i + 1]]
 
         score_delta = 0
         if len(e1_errors) > 0 and len(e2_errors) > 0:
