@@ -24,6 +24,9 @@ if __name__ == "__main__":
         grades_table = grades_table.merge(metric_table, on=["SubjectID"])
 
     pearson = grades_table.drop("SubjectID", axis=1).corr(method="pearson")
-
     print(pearson)
-    pearson.to_csv(os.path.join(out_dir, "corr.csv"))
+    pearson.to_csv(os.path.join(out_dir, "corr_pearson.csv"))
+
+    pearson = grades_table.drop("SubjectID", axis=1).corr(method="spearman")
+    print(pearson)
+    pearson.to_csv(os.path.join(out_dir, "corr_spearman.csv"))
