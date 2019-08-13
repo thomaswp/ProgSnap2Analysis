@@ -13,19 +13,12 @@ def findconsqerr(df, df_errors, score, start_pos, end_pos):
             count = 0
 
             # Get all compile errors associated with compile events e1 and e2
-            # TODO: This is a hack to fix the problem with the current dataset using Order instead of ParentEvent
-            if df.dtypes["ParentEventID"] == float:
-                e1_errors = df_errors[df_errors["ParentEventID"] == df["Order"].iloc[i]]
-            else:
-                e1_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[i]]
+            e1_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[i]]
 
             if len(e1_errors) > 0:
                 # If e1 contains an error, then search from e1 to the end of event sequence.
                 for j in range(i + 1, len(df)):
-                    if df.dtypes["ParentEventID"] == float:
-                        e2_errors = df_errors[df_errors["ParentEventID"] == df["Order"].iloc[j]]
-                    else:
-                        e2_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[j]]
+                    e2_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[j]]
 
                     # Get the set of errors shared by both compiles
                     shared_errors = set(e1_errors["CompileMessageType"]).intersection(
@@ -41,7 +34,7 @@ def findconsqerr(df, df_errors, score, start_pos, end_pos):
                 score += (count ** 2) / (count + 1)
                 break
         # keep calculate red from current e2 to the end of event
-        score = findconsqerr(df, score, idx, end_pos)
+        score = findconsqerr(df, df_errors, score, idx, end_pos)
 
         return score
     else:
@@ -92,5 +85,5 @@ if __name__ == "__main__":
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
     red_map = calculate_red_map(main_table_df)
     print(red_map)
-    write_metric_map("RepeatedCompilerError", red_map, write_path)
+    write_metric_map("RED", red_map, write_path)
 

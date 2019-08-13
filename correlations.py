@@ -5,7 +5,7 @@ import os
 
 
 if __name__ == "__main__":
-    read_path = "./data/CloudCoder"
+    read_path = "./data"
     out_dir = "./out"
 
     if len(sys.argv) > 1:
