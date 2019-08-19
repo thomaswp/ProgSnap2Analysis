@@ -144,8 +144,7 @@ def calculate_watwin(main_table, subject_id):
 
 
 if __name__ == "__main__":
-    #read_path = "./data"
-    read_path = "../PythonAST/data/PCRS"
+    read_path = "./data"
     write_path = "./out/WatWin.csv"
 
     if len(sys.argv) > 1:
