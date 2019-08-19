@@ -56,7 +56,7 @@ def calculate_red(main_table, subject_id):
     red = findconsqerr(compiles, compile_errors, score, start, end)
 
     # TODO: No official way to normalize RED, so we divide by the number of compiles
-    red = red / len(compiles) - 1
+    red = red / (len(compiles) - 1)
 
     return red
 
