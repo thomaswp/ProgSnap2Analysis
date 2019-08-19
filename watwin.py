@@ -1,11 +1,9 @@
 import pandas as pd
 import numpy as np
-import csv
-import pathlib
 import sys
 import os
 import datetime
-from datetime import timedelta
+import utils
 
 
 def calculate_watwin(main_table, subject_id):
@@ -145,22 +143,9 @@ def calculate_watwin(main_table, subject_id):
     return watwin
 
 
-def calculate_watwin_map(main_table):
-    return {subject_id: calculate_watwin(main_table, subject_id)
-            for subject_id in set(main_table_df["SubjectID"])}
-
-
-def write_metric_map(name, metric_map, path):
-    pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'w', encoding='utf8') as file:
-        writer = csv.DictWriter(file, fieldnames=["SubjectID", name], lineterminator='\n')
-        writer.writeheader()
-        for subject_id, value in metric_map.items():
-            writer.writerow({"SubjectID": subject_id, name: value})
-
-
 if __name__ == "__main__":
-    read_path = "./data"
+    #read_path = "./data"
+    read_path = "../PythonAST/data/PCRS"
     write_path = "./out/WatWin.csv"
 
     if len(sys.argv) > 1:
@@ -169,6 +154,6 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    watwin_map = calculate_watwin_map(main_table_df)
+    watwin_map = utils.calculate_metric_map(main_table_df, calculate_watwin)
     print(watwin_map)
-    write_metric_map("WatWinScore", watwin_map, write_path)
+    utils.write_metric_map("WatWinScore", watwin_map, write_path)
