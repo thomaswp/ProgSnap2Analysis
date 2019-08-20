@@ -17,6 +17,7 @@ def findconsqerr(df, df_errors, score, start_pos, end_pos):
             if len(e1_errors) > 0:
                 # If e1 contains an error, then search from e1 to the end of event sequence.
                 for j in range(i + 1, len(df)):
+                    # Becker(2016) doesn't specify whether a sequence can cross problems, we assume yes
                     e2_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[j]]
 
                     # Get the set of errors shared by both compiles
