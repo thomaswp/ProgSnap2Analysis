@@ -4,6 +4,20 @@ import os
 import utils
 
 
+def check_attr(main_table_df):
+    # Check whether the dataset has required attributes, if not, pop-up warnings:
+    counter = 0
+    for required_attr in ["SubjectID", "Order", "EventType", "EventID", "CodeStateID", "ParentEventID",
+                          "CompileMessageType"]:
+        if required_attr not in main_table_df:
+            print("The dataset misses the attribute required: ", required_attr + " !")
+            counter = 1
+    if counter == 0:
+        return True
+    else:
+        return False
+
+
 def findconsqerr(df, df_errors, score, start_pos, end_pos):
     idx = start_pos + 1
     if start_pos + 1 <= end_pos:
@@ -72,7 +86,9 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    red_map = utils.calculate_metric_map(main_table_df, calculate_red)
-    print(red_map)
-    utils.write_metric_map("RED", red_map, write_path)
+    checker = check_attr(main_table_df)
+    if checker:
+        red_map = utils.calculate_metric_map(main_table_df, calculate_red)
+        print(red_map)
+        utils.write_metric_map("RED", red_map, write_path)
 

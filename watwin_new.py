@@ -10,8 +10,8 @@ import utils
 def check_attr(main_table_df):
     # Check whether the dataset has required attributes, if not, pop-up warnings:
     counter = 0
-    for required_attr in ["SubjectID", "Order", "EventType", "CodeStateID", "ParentEventID", "CompileMessageData",
-                          "CompileMessageType", "SourceLocation", "ServerTimestamp"]:
+    for required_attr in ["SubjectID", "Order", "EventType", "EventID", "CodeStateID", "ParentEventID",
+                          "CompileMessageData", "CompileMessageType", "SourceLocation", "ServerTimestamp"]:
         if required_attr not in main_table_df:
             print("The dataset misses the attribute required: ", required_attr + " !")
             counter = 1
