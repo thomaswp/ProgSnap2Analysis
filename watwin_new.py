@@ -6,6 +6,20 @@ import datetime
 from datetime import timedelta
 import utils
 
+def check_attr(main_table_df):
+    # Check whether the dataset has required attributes, if not, pop-up warnings:
+    counter = 0
+    for required_attr in ["CodeStateID", "CompileMessageData", "CompileMessageType", "SourceLocation",
+                          "ServerTimestamp"]:
+        if required_attr not in main_table_df:
+            print("The dataset misses the attribute required: ", required_attr + " !")
+            counter = 1
+    if counter == 0:
+        return True
+    else:
+        return False
+
+
 def time_perp(main_table_df):
     # Watson(2013) doesn't state how they get mean and sd, we assume both mean and sd calculated from all compilation pairs
     # Initialization:
@@ -155,20 +169,22 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    time_arr = time_perp(main_table_df)[0]
-    mean_dict = time_perp(main_table_df)[1]
-    std_dict = time_perp(main_table_df)[2]
-    main_table_df["TimeEst"] = [
-        time_arr[main_table_df["SubjectID"][i]][main_table_df["CodeStateID"][i]] if main_table_df["SubjectID"][
-                                                                                        i] in time_arr.keys() and
-                                                                                    main_table_df["CodeStateID"][i] in
-                                                                                    time_arr[main_table_df["SubjectID"][
-                                                                                        i]].keys() else -1 for i in
-        range(len(main_table_df))]
-    main_table_df["TimeMean"] = [mean_dict[i] if i in mean_dict.keys() else 0 for i in main_table_df["SubjectID"]]
-    main_table_df["TimeStd"] = [std_dict[i] if i in std_dict.keys() else 0 for i in main_table_df["SubjectID"]]
-    watwin_map = utils.calculate_metric_map(main_table_df, calculate_watwin)
-    print(watwin_map)
-    utils.write_metric_map("WatWin", watwin_map, write_path)
+    main_table_df = pd.read_csv(os.path.join(read_path, "./MainTable.csv"))
+    checker = check_attr(main_table_df)
+    if checker:
+        time_arr = time_perp(main_table_df)[0]
+        mean_dict = time_perp(main_table_df)[1]
+        std_dict = time_perp(main_table_df)[2]
+        main_table_df["TimeEst"] = [
+            time_arr[main_table_df["SubjectID"][i]][main_table_df["CodeStateID"][i]] if main_table_df["SubjectID"][
+                                                                                            i] in time_arr.keys() and
+                                                                                        main_table_df["CodeStateID"][i] in
+                                                                                        time_arr[main_table_df["SubjectID"][
+                                                                                            i]].keys() else -1 for i in
+            range(len(main_table_df))]
+        main_table_df["TimeMean"] = [mean_dict[i] if i in mean_dict.keys() else 0 for i in main_table_df["SubjectID"]]
+        main_table_df["TimeStd"] = [std_dict[i] if i in std_dict.keys() else 0 for i in main_table_df["SubjectID"]]
+        watwin_map = utils.calculate_metric_map(main_table_df, calculate_watwin)
+        print(watwin_map)
+        utils.write_metric_map("WatWin", watwin_map, write_path)
 
