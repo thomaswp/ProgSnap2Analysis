@@ -97,7 +97,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable_BlockPy.csv"))
+    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
     checker = check_attr(main_table_df)
     if checker:
         red_map = utils.calculate_metric_map(main_table_df, calculate_red)
