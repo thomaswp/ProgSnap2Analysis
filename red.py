@@ -22,6 +22,18 @@ def findconsqerr(df, df_errors, score, start_pos, end_pos):
     idx = start_pos + 1
     if start_pos + 1 <= end_pos:
         for i in range(start_pos, end_pos):
+            # Only look at consecutive compiles within a single assignment/problem/session
+            # TODO: Jadud (2006) doesn't specify whether a session can cross problems, but we assume not
+            changed_segments = False
+            for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
+                if segment_id not in df:
+                    continue
+                if df[segment_id].iloc[i] != df[segment_id].iloc[i + 1]:
+                    changed_segments = True
+                    break
+            if changed_segments:
+                continue
+
             idx = i + 1
             count = 0
 
@@ -85,7 +97,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
+    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable_BlockPy.csv"))
     checker = check_attr(main_table_df)
     if checker:
         red_map = utils.calculate_metric_map(main_table_df, calculate_red)
