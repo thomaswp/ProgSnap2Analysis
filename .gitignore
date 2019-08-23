@@ -1,4 +1,5 @@
 data
 .idea
 *.csv
+out
 __pycache__
