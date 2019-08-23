@@ -4,10 +4,36 @@ import os
 import utils
 
 
+def check_attr(main_table_df):
+    # Check whether the dataset has required attributes, if not, pop-up warnings:
+    counter = 0
+    for required_attr in ["SubjectID", "Order", "EventType", "EventID", "CodeStateID", "ParentEventID",
+                          "CompileMessageType"]:
+        if required_attr not in main_table_df:
+            print("The dataset misses the attribute required: ", required_attr + " !")
+            counter = 1
+    if counter == 0:
+        return True
+    else:
+        return False
+
+
 def findconsqerr(df, df_errors, score, start_pos, end_pos):
     idx = start_pos + 1
     if start_pos + 1 <= end_pos:
         for i in range(start_pos, end_pos):
+            # Only look at consecutive compiles within a single assignment/problem/session
+            # TODO: Jadud (2006) doesn't specify whether a session can cross problems, but we assume not
+            changed_segments = False
+            for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
+                if segment_id not in df:
+                    continue
+                if df[segment_id].iloc[i] != df[segment_id].iloc[i + 1]:
+                    changed_segments = True
+                    break
+            if changed_segments:
+                continue
+
             idx = i + 1
             count = 0
 
@@ -17,6 +43,7 @@ def findconsqerr(df, df_errors, score, start_pos, end_pos):
             if len(e1_errors) > 0:
                 # If e1 contains an error, then search from e1 to the end of event sequence.
                 for j in range(i + 1, len(df)):
+                    # Becker(2016) doesn't specify whether a sequence can cross problems, we assume yes
                     e2_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[j]]
 
                     # Get the set of errors shared by both compiles
@@ -71,7 +98,9 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    red_map = utils.calculate_metric_map(main_table_df, calculate_red)
-    print(red_map)
-    utils.write_metric_map("RED", red_map, write_path)
+    checker = check_attr(main_table_df)
+    if checker:
+        red_map = utils.calculate_metric_map(main_table_df, calculate_red)
+        print(red_map)
+        utils.write_metric_map("RED", red_map, write_path)
 

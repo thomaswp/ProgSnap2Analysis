@@ -4,6 +4,20 @@ import os
 import utils
 
 
+def check_attr(main_table_df):
+    # Check whether the dataset has required attributes, if not, pop-up warnings:
+    counter = 0
+    for required_attr in ["SubjectID", "Order", "EventType", "EventID", "ParentEventID",
+                          "CompileMessageType"]:
+        if required_attr not in main_table_df:
+            print("The dataset misses the attribute required: ", required_attr + " !")
+            counter = 1
+    if counter == 0:
+        return True
+    else:
+        return False
+
+
 def calculate_eq(main_table, subject_id):
     subject_events = main_table.loc[main_table["SubjectID"] == subject_id]
 
@@ -65,7 +79,9 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    eq_map = utils.calculate_metric_map(main_table_df, calculate_eq)
-    print(eq_map)
-    utils.write_metric_map("ErrorQuotient", eq_map, write_path)
+    checker = check_attr(main_table_df)
+    if checker:
+        eq_map = utils.calculate_metric_map(main_table_df, calculate_eq)
+        print(eq_map)
+        utils.write_metric_map("ErrorQuotient", eq_map, write_path)
 

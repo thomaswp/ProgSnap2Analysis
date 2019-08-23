@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import os
 import datetime
+from datetime import timedelta
 import utils
 
 
@@ -25,7 +26,7 @@ def calculate_watwin(main_table, subject_id):
     for subj in range(len(compiles) - 1):
         # Only look at consecutive compiles within a single assignment/problem/session
         # Before starting the algorithm:
-        # TODO: Watson (2013) requires deletion fixes and commented fixes, we assume dataset have done this
+        # Watson (2013) requires deletion fixes and commented fixes, we assume dataset have done this
         changed_segments = False
         for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
             if segment_id not in compiles:
@@ -62,7 +63,7 @@ def calculate_watwin(main_table, subject_id):
             if count_time != 0:
                 mean_time = sum_time / count_time
                 mean_dict[subj] = mean_time
-                std_time = np.std(time_arr[subj].values())
+                std_time = np.std(np.asarray(list(time_arr[subj].values())))
                 std_dict[subj] = std_time
 
     # add TimeEst, TimeMean, and TimeStd to compiles dataframe
@@ -108,8 +109,8 @@ def calculate_watwin(main_table, subject_id):
 
                     # TODO: Watson (2013) requires for error line number of compiled code
                     # if same line
-                    # if err_df["ErrLineLoc"].iloc[i] == err_df["ErrLineLoc"].iloc[i + 1]:
-                    #    score += 2
+                    if err_df["SourceLocation"].iloc[i].split(':')[1] == err_df["SourceLocation"].iloc[i + 1].split(':')[1]:
+                        score += 2
 
                     # if time < M - 1SD
                     if compiles["TimeEst"].iloc[i] < (

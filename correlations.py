@@ -1,7 +1,7 @@
-
 import pandas as pd
 import sys
 import os
+from scipy import stats
 
 
 if __name__ == "__main__":
@@ -28,5 +28,12 @@ if __name__ == "__main__":
     pearson.to_csv(os.path.join(out_dir, "corr_pearson.csv"))
 
     pearson = grades_table.drop("SubjectID", axis=1).corr(method="spearman")
-    print(pearson)
+    print(spearman)
     pearson.to_csv(os.path.join(out_dir, "corr_spearman.csv"))
+
+    data_table = grades_table.drop("SubjectID", axis=1)
+    x = data_table.iloc[:, 0]
+    y = data_table.iloc[:, 1]
+    r_squared = stats.linregress(x, y)[2] ** 2
+    print(r_squared)
+    r_squared.to_csv(os.path.join(out_dir, "r_squared.csv"))
