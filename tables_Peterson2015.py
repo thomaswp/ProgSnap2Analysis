@@ -177,7 +177,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable_CloudCoder.csv"))
+    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
     checker = check_attr(main_table_df)
     if checker:
         table_1 = get_table_1(main_table_df)
