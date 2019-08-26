@@ -16,6 +16,7 @@ import os
 import csv
 import pathlib
 
+datetimeFormat = '%Y-%m-%dT%H:%M:%S'
 
 def check_attr(main_table_df):
     # Check whether the dataset has required attributes, if not, pop-up warnings:
@@ -28,6 +29,50 @@ def check_attr(main_table_df):
         return True
     else:
         return False
+
+
+def assign_session_ids(main_table_df, gap_time):
+    if "SessionID" in main_table_df:
+        return main_table_df
+
+    for tsf in ["ServerTimestamp", "ClientTimestamp"]:
+        if tsf in main_table_df:
+            timestamp_field = tsf
+    if timestamp_field is None:
+        raise Exception("No Timestamp!")
+
+    main_table_df.sort_values(by=['Order'])
+    for subject_id in set(main_table_df["SubjectID"]):
+        subject_events = main_table_df[main_table_df["SubjectID"] == subject_id]
+
+        session_id = 0
+        last_timestamp = datetime.datetime.strptime(subject_events[timestamp_field].iloc[0], datetimeFormat)
+        for i in range(len(subject_events)):
+            subject_events["SessionID"].iloc[i] = subject_id + "_" + str(session_id)
+
+            timestamp = datetime.datetime.strptime(subject_events[timestamp_field].iloc[i], datetimeFormat)
+            if (timestamp - last_timestamp).total_seconds() / 60.0 > gap_time:
+                session_id += 1
+            last_timestamp = timestamp
+
+    return main_table_df
+
+
+def filter_dataset(main_table_df, gap_time, min_compiles, min_sessions):
+    main_table_df = assign_session_ids(main_table_df, gap_time)
+
+    session_to_keep = [session_id for session_id in set(main_table_df["SessionID"])
+                       if len(main_table_df[main_table_df["SessionID"] == session_id and
+                                            main_table_df["EventType"] == "Compile"]) >= min_compiles]
+    main_table_df = main_table_df[main_table_df["SessionID"] in session_to_keep]
+
+    students_to_keep = [subject_id for subject_id in set(main_table_df["SubjectID"])
+                        if len(set(main_table_df[main_table_df["SubjectID"] == subject_id]
+                                   ["SessionID"])) >= min_sessions]
+
+    main_table_df = main_table_df[main_table_df["SubjectID"] in students_to_keep]
+
+    return main_table_df
 
 
 def data_prep(main_table_df, subj, gap_time, min_sessions, min_compiles):
@@ -154,7 +199,7 @@ def get_table_2(main_table_df):
     # Get 2)
     # Set thresholds, which can be changed according to different needs
     gap_time = 1200
-    min_sessions = 7
+    min_sessions = 2
     min_compiles = 4
     # Get 3), 4), 5)
     # Initialization:
@@ -177,7 +222,7 @@ def get_table_2(main_table_df):
 
 
 if __name__ == "__main__":
-    read_path = "./data"
+    read_path = "./data/DataChallenge"
     write_dir = "./out"
 
     if len(sys.argv) > 1:
@@ -185,12 +230,12 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    checker = check_attr(main_table_df)
+    main_table = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
+    checker = check_attr(main_table)
     if checker:
-        table_1 = get_table_1(main_table_df)
+        table_1 = get_table_1(main_table)
         print(table_1)
-        table_2 = get_table_2(main_table_df)
+        table_2 = get_table_2(main_table)
         print(table_2)
 
         pathlib.Path(write_dir).parent.mkdir(parents=True, exist_ok=True)
