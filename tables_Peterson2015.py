@@ -28,7 +28,7 @@ def check_attr(main_table_df):
         return False
 
 
-def data_prep(main_table_df, subj, gap_time, min_sessions):
+def data_prep(main_table_df, subj, gap_time, min_sessions, min_compiles):
     # Data Preperation (Peterson 2015):
     # 1) Remove submissions where no code changed between submissions
     # 2) Combine sequences of submissions into work sessions
@@ -84,15 +84,16 @@ def data_prep(main_table_df, subj, gap_time, min_sessions):
     for session in set(submit_df["SessionID"]):
         session_df = submit_df[submit_df["SessionID"] == session]
         session_compile = len(compile_df[compile_df["SessionID"] == session])
-
-        if len(session_df) < min_sessions:
+        if session_compile < min_compiles:
             subj_session = subj_session - 1
             subj_compile = subj_compile - session_compile
 
     # Then count the number of sessions per student
-    # - Drop any students who have fewer than 1 session or 1 compile event
-    if subj_session == 0 or subj_compile == 0:
+    # - Drop any students who have fewer than MIN_SESSIONS students
+    if subj_session < min_sessions or subj_compile == 0:
         usability = False
+        subj_session = 0
+        subj_compile = 0
 
     return subj_session, subj_compile, usability
 
@@ -149,6 +150,7 @@ def get_table_2(main_table_df):
     # Set thresholds, which can be changed according to different needs
     gap_time = 1200
     min_sessions = 7
+    min_compiles = 4
     # Get 3), 4), 5)
     # Initialization:
     students = len(main_table_df['SubjectID'].unique().tolist())
@@ -159,7 +161,7 @@ def get_table_2(main_table_df):
     # Begin calulate for each subject:
     for subj in set(main_table_df["SubjectID"].loc[main_table_df["EventType"]=="Submit"]):
         #subj_data is an array contains (subj_session, subj_compile, usability)
-        subj_data = data_prep(main_table_df, subj, gap_time, min_sessions)
+        subj_data = data_prep(main_table_df, subj, gap_time, min_sessions, min_compiles)
         if subj_data[2] == False:
             students = students - 1
         sessions = sessions + subj_data[0]
