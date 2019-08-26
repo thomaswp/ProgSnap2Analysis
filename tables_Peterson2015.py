@@ -15,6 +15,19 @@ import utils
 import csv
 
 
+def check_attr(main_table_df):
+    # Check whether the dataset has required attributes, if not, pop-up warnings:
+    counter = 0
+    for required_attr in ["SubjectID", "ProblemID", "EventType", "CodeStateID", "ServerTimestamp"]:
+        if required_attr not in main_table_df:
+            print("The dataset misses the attribute required: ", required_attr + " !")
+            counter = 1
+    if counter == 0:
+        return True
+    else:
+        return False
+
+
 def data_prep(main_table_df, subj, gap_time, min_sessions):
     # Data Preperation (Peterson 2015):
     # 1) Remove submissions where no code changed between submissions
@@ -29,35 +42,55 @@ def data_prep(main_table_df, subj, gap_time, min_sessions):
             # Start to do 1):
             submit_df = submit_df.drop(submit_df.index[i + 1])
 
-    # Initialize session(subj_session) to be ProblemID numbers for each subject, compile events(subj_compile) to be all compile events for each subject. If a subject has no usable data, usability turns False
-    subj_session = len(submit_df['ProblemID'].unique().tolist())
+    for required_attr in ["SessionID"]:
+        if required_attr not in current_df:
+            # Initialize SessionID == 0 before assigned real ID
+            submit_df["SessionID"] = [0 for i in submit_df["SubjectID"]]
+            compile_df["SessionID"] = [0 for i in compile_df["SubjectID"]]
+
+            session_num = 1
+            for j in range(len(submit_df) - 1):
+                datetimeFormat = '%Y-%m-%dT%H:%M:%S'
+                date1 = datetime.datetime.strptime(submit_df["ServerTimestamp"].iloc[j + 1], datetimeFormat)
+                date2 = datetime.datetime.strptime(submit_df["ServerTimestamp"].iloc[j], datetimeFormat)
+                time_diff = ((((date1.month - date2.month) * 30 + (date1.day - date2.day)) * 24 + (
+                            date1.hour - date2.hour)) * 60 + (date1.minute - date2.minute)) * 60 + (
+                                        date1.second - date2.second)
+                # Threshold 1: if the duration between two consequtive submissions exceeds gap_time
+                if time_diff > gap_time:
+                    submit_df.at[j, 'SessionID'] = session_num
+                    session_num = session_num + 1
+                else:
+                    submit_df.at[j, 'SessionID'] = session_num
+                submit_df.at[j, 'SessionID'] = session_num
+
+            # pass sessionID to compile dataframe
+            for k in range(len(compile_df)):
+                for k_idx in range(len(submit_df)):
+                    if compile_df["ServerTimestamp"].iloc[k] < submit_df["ServerTimestamp"].iloc[k_idx]:
+                        compile_df["SessionID"].iloc[k] = submit_df["SessionID"].iloc[k_idx]
+                        break
+                    else:
+                        compile_df["SessionID"].iloc[k] = submit_df["SessionID"].iloc[k_idx] + 1
+                        break
+
+    # Initialize session(subj_session) to be SessionID numbers for each subject, compile events(subj_compile) to be all compile events for each subject. If a subject has no usable data, usability turns False
+    subj_session = len(submit_df['SessionID'].unique().tolist())
     subj_compile = len(compile_df)
     usability = True
-    # Begin calculating new subj_session and subj_compile with thresholds
-    # We assume each session only contains one exercise
-    for prob in set(submit_df["ProblemID"]):
-        prob_df = submit_df[submit_df["ProblemID"] == prob]
-        prob_compile = len(compile_df[compile_df["ProblemID"] == prob])
 
-        for j in reversed(range(len(prob_df) - 1)):
-            datetimeFormat = '%Y-%m-%dT%H:%M:%S'
-            date1 = datetime.datetime.strptime(current_df["ServerTimestamp"].iloc[j + 1], datetimeFormat)
-            date2 = datetime.datetime.strptime(current_df["ServerTimestamp"].iloc[j], datetimeFormat)
-            time_diff = ((((date1.month - date2.month) * 30 + (date1.day - date2.day)) * 24 + (
-                        date1.hour - date2.hour)) * 60 + (date1.minute - date2.minute)) * 60 + (
-                                    date1.second - date2.second)
-            # Threshold 1: if the duration between two consequtive submissions exceeds gap_time
-            if time_diff > gap_time:
-                subj_session = subj_session - 1
-                subj_compile = subj_compile - prob_compile
-                break
-            else:
-                # Threshold 2: min_sessions (Jadud's selection of min 7 distinct submission per session)
-                if len(prob_df) < min_sessions:
-                    subj_session = subj_session - 1
-                    subj_compile = subj_compile - prob_compile
-                    break
+    # Then count the number of Compile events
+    # - Drop any SESSIONS which have fewer than MIN_COMPILE compiles(min_session)
+    for session in set(submit_df["SessionID"]):
+        session_df = submit_df[submit_df["SessionID"] == session]
+        session_compile = len(compile_df[compile_df["SessionID"] == session])
 
+        if len(session_df) < min_sessions:
+            subj_session = subj_session - 1
+            subj_compile = subj_compile - session_compile
+
+    # Then count the number of sessions per student
+    # - Drop any students who have fewer than 1 session or 1 compile event
     if subj_session == 0 or subj_compile == 0:
         usability = False
 
@@ -145,23 +178,25 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable_CloudCoder.csv"))
-    table_1 = get_table_1(main_table_df)
-    print(table_1)
-    table_2 = get_table_2(main_table_df)
-    print(table_2)
+    checker = check_attr(main_table_df)
+    if checker:
+        table_1 = get_table_1(main_table_df)
+        print(table_1)
+        table_2 = get_table_2(main_table_df)
+        print(table_2)
 
-    csvfile1 = open('./out/table_1_Peterson2015.csv', 'w', newline='')
-    obj = csv.writer(csvfile1)
-    obj.writerow(
-        ['System', 'Language', 'Students', 'Exercises', 'in # Sets', 'Compilation Events', '% with Error'])
-    obj.writerow(table_1)
-    csvfile1.close()
+        csvfile1 = open('./out/table_1_Peterson2015.csv', 'w', newline='')
+        obj = csv.writer(csvfile1)
+        obj.writerow(
+            ['System', 'Language', 'Students', 'Exercises', 'in # Sets', 'Compilation Events', '% with Error'])
+        obj.writerow(table_1)
+        csvfile1.close()
 
-    csvfile2 = open('./out/table_2_Peterson2015.csv', 'w', newline='')
-    obj = csv.writer(csvfile2)
-    obj.writerow(
-        ['Dataset', 'Gap Time', 'Min Sessions', 'Students', 'Compilation Events', '% of Total', 'Sessions'])
-    obj.writerow(table_2)
-    csvfile2.close()
+        csvfile2 = open('./out/table_2_Peterson2015.csv', 'w', newline='')
+        obj = csv.writer(csvfile2)
+        obj.writerow(
+            ['Dataset', 'Gap Time', 'Min Sessions', 'Students', 'Compilation Events', '% of Total', 'Sessions'])
+        obj.writerow(table_2)
+        csvfile2.close()
 
 
