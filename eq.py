@@ -2,6 +2,7 @@ import pandas as pd
 import sys
 import os
 import utils
+import data_filter
 
 
 def check_attr(main_table_df):
@@ -27,20 +28,24 @@ def calculate_eq(main_table, subject_id):
 
     if len(compiles) <= 1:
         return None
-
+    session_num = len(compiles['SessionID'].unique().tolist())
     score = 0
     pair_count = 0
+    session_score = 0
     # Iterate through pairs of compile events, e1 and e2
     for i in range(len(compiles) - 1):
-        # Only look at consecutive compiles within a single assignment/problem/session
-        # TODO: Jadud (2006) doesn't specify whether a session can cross problems, but we assume not
+        # Only look at consecutive compiles within a single session
+        # TODO: Jadud (2006) doesn't specify whether a session can cross problems, but we assume yes
         changed_segments = False
-        for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
-            if segment_id not in compiles:
-                continue
-            if compiles[segment_id].iloc[i] != compiles[segment_id].iloc[i + 1]:
-                changed_segments = True
-                break
+        if compiles["SessionID"].iloc[i] != compiles["SessionID"].iloc[i + 1]:
+            changed_segments = True
+            if pair_count > 0:
+                # Normalize the score by the maximum value and take the average
+                session_score += (score / 11.) / pair_count
+            else:
+                session_score += 0
+            score = 0
+            # break
         if changed_segments:
             continue
 
@@ -65,8 +70,7 @@ def calculate_eq(main_table, subject_id):
     if pair_count == 0:
         return None
 
-    # Normalize the score by the maximum value and take the average
-    return (score / 11.) / pair_count
+    return session_score / session_num
 
 
 if __name__ == "__main__":
@@ -79,6 +83,7 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
+    main_table_df = data_filter.filter_dataset(main_table_df, gap_time=1200, min_compiles=4, min_sessions=2)
     checker = check_attr(main_table_df)
     if checker:
         eq_map = utils.calculate_metric_map(main_table_df, calculate_eq)
