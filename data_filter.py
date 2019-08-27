@@ -10,73 +10,103 @@
 # Required format of input dataset: ProgSnap2
 
 import pandas as pd
+import numpy as np
 import datetime
 import sys
 import os
 import csv
 import pathlib
+import utils
 
-gap_time = 1200
-min_sessions = 2
-min_compiles = 4
-datetimeFormat = '%Y-%m-%dT%H:%M:%S'
-pd.options.mode.chained_assignment = None  # default='warn'
+GAP_TIME = 1200
+MIN_SESSIONS_Z = -2
+MIN_COMPILES = 4
+DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
+
 
 def check_attr(main_table_df):
     # Check whether the dataset has required attributes, if not, pop-up warnings:
-    counter = 0
-    for required_attr in ["SubjectID", "ProblemID", "EventType", "CodeStateID", "ServerTimestamp"]:
-        if required_attr not in main_table_df:
-            print("The dataset misses the attribute required: ", required_attr + " !")
-            counter = 1
-    if counter == 0:
-        return True
-    else:
-        return False
+    for required_attr in ["SubjectID", ["ProblemID", "AssignmentID"], "EventType", "CodeStateID",
+                          ["ClientTimestamp", "ServerTimestamp"]]:
+        if not isinstance(required_attr, list):
+            required_attr = [required_attr]
+        has = False
+        for attr in required_attr:
+            if attr in main_table_df:
+                has = True
+        if not has:
+            print("One of the following attributes is required: ", required_attr + " !")
+            return False
+    return True
 
 
-def assign_session_ids(main_table_df, gap_time):
+def assign_session_ids(main_table_df, gap_time=GAP_TIME):
     if "SessionID" in main_table_df:
         return main_table_df
 
+    print("Assigning session IDs:")
     for tsf in ["ServerTimestamp", "ClientTimestamp"]:
         if tsf in main_table_df:
             timestamp_field = tsf
     if timestamp_field is None:
         raise Exception("No Timestamp!")
 
+    main_table_df.sort_values(by=['SubjectID', 'Order'])
+
+    subject_id = None
+    session_id = 0
+    session_ids = []
+    timestamps = [datetime.datetime.strptime(main_table_df[timestamp_field].iloc[i], DATE_FORMAT)
+                  for i in range(len(main_table_df))]
+
+    for i in range(len(main_table_df)):
+        timestamp = timestamps[i]
+        if subject_id != main_table_df["SubjectID"].iloc[i]:
+            last_timestamp = datetime.datetime.strptime(main_table_df[timestamp_field].iloc[i], DATE_FORMAT)
+            session_id = session_id + 1
+            subject_id = main_table_df["SubjectID"].iloc[i]
+
+        # Store separately for efficiency
+        session_ids.append(session_id)
+
+        if (timestamp - last_timestamp).total_seconds() / 60.0 > gap_time:
+            session_id += 1
+        last_timestamp = timestamp
+        utils.print_progress_bar(i + 1, len(main_table_df))
+
+    main_table_df["SessionID"] = session_ids
+
+    print()
+    print("Assigned %d unique sessionIDs" % session_id)
+
     main_table_df.sort_values(by=['Order'])
-    # Initialize SessionID column in main_table_df
-    main_table_df["SessionID"] = 0
-    new_main_table_df = pd.DataFrame()
-    for subject_id in set(main_table_df["SubjectID"]):
-        subject_events = main_table_df[main_table_df["SubjectID"] == subject_id]
-
-        session_id = 0
-        last_timestamp = datetime.datetime.strptime(subject_events[timestamp_field].iloc[0], datetimeFormat)
-        for i in range(len(subject_events)):
-            subject_events["SessionID"].iloc[i] = str(subject_id) + "_" + str(session_id)
-
-            timestamp = datetime.datetime.strptime(subject_events[timestamp_field].iloc[i], datetimeFormat)
-            if (timestamp - last_timestamp).total_seconds() / 60.0 > gap_time:
-                session_id += 1
-            last_timestamp = timestamp
-        new_main_table_df = new_main_table_df.append(subject_events)
-
-    return new_main_table_df
+    return main_table_df
 
 
-def filter_dataset(main_table_df, gap_time, min_compiles, min_sessions):
+def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, min_sessions_z=MIN_SESSIONS_Z):
     main_table_df = assign_session_ids(main_table_df, gap_time)
+    n_students = len(set(main_table_df["SubjectID"]))
 
     session_to_keep = [session_id for session_id in set(main_table_df["SessionID"])
                        if len(main_table_df[(main_table_df['SessionID'] == session_id) &
                                             (main_table_df['EventType'] == "Compile")]) >= min_compiles]
+    print("Dropping %d sessions with with compiles < %.02f" %
+          (len(set(main_table_df["SessionID"])) - len(session_to_keep), min_compiles))
+
     main_table_df = main_table_df[main_table_df["SessionID"].isin(session_to_keep)]
 
-    students_to_keep = [subject_id for subject_id in set(main_table_df["SubjectID"])
-                        if len(set(main_table_df[main_table_df["SubjectID"] == subject_id]
-                                   ["SessionID"])) >= min_sessions]
+    session_count_map = {subject_id: len(set(main_table_df[main_table_df["SubjectID"] == subject_id]["SessionID"]))
+                         for subject_id in set(main_table_df["SubjectID"])}
+    mean_sessions = np.mean(list(session_count_map.values()))
+    sd_sessions = np.std(list(session_count_map.values()))
+    if sd_sessions == 0:
+        sd_sessions = 1
+
+    students_to_keep = [subject_id for subject_id in session_count_map.keys()
+                        if (session_count_map[subject_id] - mean_sessions) / sd_sessions >= min_sessions_z]
+
+    print("Dropping %d students with with z-score < %.02f for sessions (M=%.02f and SD=%.02f)" %
+          (n_students - len(students_to_keep), min_sessions_z, mean_sessions, sd_sessions))
 
     main_table_df = main_table_df[main_table_df["SubjectID"].isin(students_to_keep)]
 
@@ -86,8 +116,8 @@ def filter_dataset(main_table_df, gap_time, min_compiles, min_sessions):
 def get_table_1(main_table_df):
     # Calculate Table 1
     # We assume the dataset contains "Compile" and "Compile.Error" in EventType attribute
-    # For the dataset which uses Python as programming languge, we assume that any error reported by Python results in a
-    # "Compilation Failure"
+    # For the dataset which uses Python as programming language, we assume that any error reported by Python results in
+    # a "Compilation Failure"
     # We assume one set contains one question
     # Get 1) and 3)
     if 'ToolInstances' in main_table_df.columns:
@@ -102,16 +132,27 @@ def get_table_1(main_table_df):
         language = 'N/A'
     # Get 4) and 5)
     students_num = len(main_table_df['SubjectID'].unique().tolist())
-    exercises_num = len(main_table_df['ProblemID'].unique().tolist())
+
+    for pid in ['ProblemID', 'AssignmentID']:
+        if pid in main_table_df:
+            exercises_num = len(main_table_df[pid].unique().tolist())
+            break
+
     sets_num = exercises_num
     # Get 6)
     compiles = main_table_df[main_table_df["EventType"] == "Compile"]
-    compilation_event = len(compiles)
+    compile_events = len(compiles)
 
-    compile_errors = main_table_df[main_table_df["EventType"] == "Compile.Error"]
-    perc_w_error = '{:.1%}'.format(len(compile_errors)/compilation_event)
+    compile_errors = len(set(main_table_df[main_table_df["EventType"] == "Compile.Error"]["ParentEventID"]))
+    perc_w_error = '{:.1%}'.format(compile_errors / compile_events)
 
-    return system, language, students_num, exercises_num, sets_num, compilation_event, perc_w_error
+    sessions_per_student = np.mean([
+        len(main_table_df[main_table_df['SubjectID'] == subject_id]['SessionID'].unique().tolist())
+        for subject_id in main_table_df['SubjectID'].unique().tolist()
+    ])
+
+    return [system, language, students_num, exercises_num, sets_num, compile_events, perc_w_error,
+            sessions_per_student]
 
 
 def get_table_2(main_table_df):
@@ -137,19 +178,19 @@ def get_table_2(main_table_df):
     # Get 3), 4), 5)
     compiles = main_table_df[main_table_df["EventType"] == "Compile"]
     total_compilation_event = len(compiles)
-    main_table_df = filter_dataset(main_table_df, gap_time, min_compiles, min_sessions)
+    main_table_df = filter_dataset(main_table_df, GAP_TIME, MIN_COMPILES, MIN_SESSIONS_Z)
     compilation_event = len(main_table_df[main_table_df["EventType"] == "Compile"])
     perc_of_total = '{:.1%}'.format(compilation_event/total_compilation_event)
 
     sessions = len(main_table_df['SessionID'].unique().tolist())
     students = len(main_table_df['SubjectID'].unique().tolist())
 
-    return dataset_name, gap_time, min_sessions, students, compilation_event, perc_of_total, sessions
+    return dataset_name, GAP_TIME, MIN_SESSIONS_Z, students, compilation_event, perc_of_total, sessions
 
 
 if __name__ == "__main__":
-    #read_path = "./data/DataChallenge"
     read_path = "./data/"
+    # read_path = "./data/PCRS"
     write_dir = "./out"
 
     if len(sys.argv) > 1:
@@ -157,27 +198,31 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table = pd.read_csv(os.path.join(read_path, "MainTable_WatWin.csv"))
+    main_table = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
+
     checker = check_attr(main_table)
     if checker:
+        main_table = assign_session_ids(main_table)
         table_1 = get_table_1(main_table)
         print(table_1)
-        table_2 = get_table_2(main_table)
+
+        table_2 = get_table_1(filter_dataset(main_table))
         print(table_2)
 
         pathlib.Path(write_dir).parent.mkdir(parents=True, exist_ok=True)
-        csvfile1 = open(os.path.join(write_dir, 'table_1_Peterson2015.csv'), 'w', newline='')
-        obj = csv.writer(csvfile1)
-        obj.writerow(
-            ['System', 'Language', 'Students', 'Exercises', 'in # Sets', 'Compilation Events', '% with Error'])
-        obj.writerow(table_1)
-        csvfile1.close()
+        with open(os.path.join(write_dir, 'stats.csv'), 'w', newline='') as csvfile:
+            obj = csv.writer(csvfile)
+            obj.writerow(
+                ['Filtered', 'System', 'Language', 'Students', 'Exercises', 'in # Sets', 'Compilation Events',
+                 '% with Error', 'Sessions per Student'])
+            for name, table in {'No': table_1, 'Yes': table_2}.items():
+                obj.writerow([name] + table)
 
-        csvfile2 = open(os.path.join(write_dir, 'table_2_Peterson2015.csv'), 'w', newline='')
-        obj = csv.writer(csvfile2)
-        obj.writerow(
-            ['Dataset', 'Gap Time', 'Min Sessions', 'Students', 'Compilation Events', '% of Total', 'Sessions'])
-        obj.writerow(table_2)
-        csvfile2.close()
+        # csvfile2 = open(os.path.join(write_dir, 'table_2_Peterson2015.csv'), 'w', newline='')
+        # obj = csv.writer(csvfile2)
+        # obj.writerow(
+        #     ['Dataset', 'Gap Time', 'Min Sessions', 'Students', 'Compilation Events', '% of Total', 'Sessions'])
+        # obj.writerow(table_2)
+        # csvfile2.close()
 
 

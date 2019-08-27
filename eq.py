@@ -83,7 +83,7 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    main_table_df = data_filter.filter_dataset(main_table_df, gap_time=1200, min_compiles=4, min_sessions=2)
+    main_table_df = data_filter.filter_dataset(main_table_df)
     checker = check_attr(main_table_df)
     if checker:
         eq_map = utils.calculate_metric_map(main_table_df, calculate_eq)
