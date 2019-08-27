@@ -50,6 +50,7 @@ def write_metric_map(name, metric_map, path):
 
 
 def calculate_metric_map(main_table, metric_fn):
+    print("Calculating error metric...")
     subject_ids = set(main_table["SubjectID"])
     metric_map = {}
     dropped = 0
