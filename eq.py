@@ -28,7 +28,7 @@ def calculate_eq(main_table, subject_id):
 
     if len(compiles) <= 1:
         return None
-
+    session_num = len(compiles['SessionID'].unique().tolist())
     score = 0
     pair_count = 0
     session_score = 0
@@ -70,7 +70,7 @@ def calculate_eq(main_table, subject_id):
     if pair_count == 0:
         return None
 
-    return session_score
+    return session_score / session_num
 
 
 if __name__ == "__main__":
