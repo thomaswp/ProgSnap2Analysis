@@ -149,7 +149,6 @@ def calculate_watwin(session_table):
 
 if __name__ == "__main__":
     read_path = "./data"
-    # read_path = "./data/DataChallenge"
     write_path = "./out/WatWin.csv"
 
     if len(sys.argv) > 1:
@@ -163,16 +162,17 @@ if __name__ == "__main__":
                                                      "ParentEventID", "CompileMessageData", "CompileMessageType",
                                                      "SourceLocation", ["ServerTimestamp", "ClientTimestamp"]])
     if checker:
-        time_arr = time_perp(main_table_df)[0]
-        mean_dict = time_perp(main_table_df)[1]
-        std_dict = time_perp(main_table_df)[2]
+        perp = time_perp(main_table_df)
+        time_arr = perp[0]
+        mean_dict = perp[1]
+        std_dict = perp[2]
         main_table_df["TimeEst"] = [
-            time_arr[main_table_df["SubjectID"][i]][main_table_df["CodeStateID"][i]] if main_table_df["SubjectID"][
-                                                                                            i] in time_arr.keys() and
-                                                                                        main_table_df["CodeStateID"][i] in
-                                                                                        time_arr[main_table_df["SubjectID"][
-                                                                                            i]].keys() else -1 for i in
-            range(len(main_table_df))]
+            time_arr[main_table_df["SubjectID"][i]][main_table_df["CodeStateID"][i]]
+            if main_table_df["SubjectID"][i] in time_arr.keys() and
+               main_table_df["CodeStateID"][i] in time_arr[main_table_df["SubjectID"][i]].keys()
+            else -1
+            for i in range(len(main_table_df))
+        ]
         main_table_df["TimeMean"] = [mean_dict[i] if i in mean_dict.keys() else 0 for i in main_table_df["SubjectID"]]
         main_table_df["TimeStd"] = [std_dict[i] if i in std_dict.keys() else 0 for i in main_table_df["SubjectID"]]
         watwin_map = utils.calculate_metric_map(main_table_df, calculate_watwin)
