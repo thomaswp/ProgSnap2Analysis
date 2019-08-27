@@ -19,8 +19,8 @@ import pathlib
 import utils
 
 GAP_TIME = 1200
-MIN_SESSIONS_Z = -2
-MIN_COMPILES = 4
+MIN_SESSIONS_Z = -1
+MIN_COMPILES = 3
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 
@@ -86,17 +86,27 @@ def assign_session_ids(main_table_df, gap_time=GAP_TIME):
 def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, min_sessions_z=MIN_SESSIONS_Z):
     main_table_df = assign_session_ids(main_table_df, gap_time)
     n_students = len(set(main_table_df["SubjectID"]))
+    n_sessions = len(set(main_table_df["SessionID"]))
 
-    session_to_keep = [session_id for session_id in set(main_table_df["SessionID"])
-                       if len(main_table_df[(main_table_df['SessionID'] == session_id) &
-                                            (main_table_df['EventType'] == "Compile")]) >= min_compiles]
-    print("Dropping %d sessions with with compiles < %.02f" %
-          (len(set(main_table_df["SessionID"])) - len(session_to_keep), min_compiles))
+    compile_sessions = main_table_df[main_table_df["EventType"] == "Compile"]["SessionID"]
+    compiles_count_map = {session_id: np.sum(compile_sessions == session_id)
+                          for session_id in set(main_table_df["SessionID"])}
+    # print(compiles_count_map)
+
+    mean_compiles = np.mean(list(compiles_count_map.values()))
+    sd_compiles = np.std(list(compiles_count_map.values()))
+    session_to_keep = [session_id for session_id in compiles_count_map.keys()
+                       # if (compiles_count_map[session_id] - mean_compiles) / sd_compiles >= min_compiles]
+                       if compiles_count_map[session_id] >= min_compiles]
 
     main_table_df = main_table_df[main_table_df["SessionID"].isin(session_to_keep)]
+    print("Dropping %d sessions with < %.02f compiles (M=%.02f and SD=%.02f), removing %s students" %
+          (n_sessions - len(session_to_keep), min_compiles, mean_compiles, sd_compiles,
+           n_students - len(set(main_table_df["SubjectID"]))))
 
     session_count_map = {subject_id: len(set(main_table_df[main_table_df["SubjectID"] == subject_id]["SessionID"]))
                          for subject_id in set(main_table_df["SubjectID"])}
+    # print(session_count_map)
     mean_sessions = np.mean(list(session_count_map.values()))
     sd_sessions = np.std(list(session_count_map.values()))
     if sd_sessions == 0:
@@ -106,7 +116,7 @@ def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, 
                         if (session_count_map[subject_id] - mean_sessions) / sd_sessions >= min_sessions_z]
 
     print("Dropping %d students with with z-score < %.02f for sessions (M=%.02f and SD=%.02f)" %
-          (n_students - len(students_to_keep), min_sessions_z, mean_sessions, sd_sessions))
+          (len(session_count_map) - len(students_to_keep), min_sessions_z, mean_sessions, sd_sessions))
 
     main_table_df = main_table_df[main_table_df["SubjectID"].isin(students_to_keep)]
 
@@ -147,8 +157,8 @@ def get_table_1(main_table_df):
     perc_w_error = '{:.1%}'.format(compile_errors / compile_events)
 
     sessions_per_student = np.mean([
-        len(main_table_df[main_table_df['SubjectID'] == subject_id]['SessionID'].unique().tolist())
-        for subject_id in main_table_df['SubjectID'].unique().tolist()
+        len(set(main_table_df[main_table_df['SubjectID'] == subject_id]['SessionID']))
+        for subject_id in set(main_table_df['SubjectID'])
     ])
 
     return [system, language, students_num, exercises_num, sets_num, compile_events, perc_w_error,
@@ -199,6 +209,9 @@ if __name__ == "__main__":
         write_path = sys.argv[2]
 
     main_table = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
+
+    # subjects = list(set(main_table['SubjectID']))[0:60]
+    # main_table = main_table[main_table['SubjectID'].isin(subjects)].copy()
 
     checker = check_attr(main_table)
     if checker:
