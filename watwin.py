@@ -16,7 +16,7 @@ def time_perp(main_table_df):
 
     for subj in set(main_table_df["SubjectID"]):
         current_df = main_table_df.loc[main_table_df["SubjectID"] == subj]
-        current_df.sort_values(by=['Order'])
+        current_df = current_df.sort_values(by=['Order'])
         compiles = current_df[current_df["EventType"] == "Compile"]
         compile_errors = current_df[current_df["EventType"] == "Compile.Error"]
 
@@ -149,7 +149,7 @@ def calculate_watwin(session_table):
 
 if __name__ == "__main__":
     read_path = "./data"
-    # read_path = "./data/DataChallenge"
+    # read_path = "./data/PCRS"
     write_path = "./out/WatWin.csv"
 
     if len(sys.argv) > 1:
