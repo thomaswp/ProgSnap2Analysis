@@ -3,22 +3,8 @@ import numpy as np
 import sys
 import os
 import datetime
-from datetime import timedelta
+import data_filter
 import utils
-
-
-def check_attr(main_table_df):
-    # Check whether the dataset has required attributes, if not, pop-up warnings:
-    counter = 0
-    for required_attr in ["SubjectID", "Order", "EventType", "EventID", "CodeStateID", "ParentEventID",
-                          "CompileMessageData", "CompileMessageType", "SourceLocation", "ServerTimestamp"]:
-        if required_attr not in main_table_df:
-            print("The dataset misses the attribute required: ", required_attr + " !")
-            counter = 1
-    if counter == 0:
-        return True
-    else:
-        return False
 
 
 def time_perp(main_table_df):
@@ -71,12 +57,11 @@ def time_perp(main_table_df):
     return time_arr, mean_dict, std_dict
 
 
-def calculate_watwin(main_table, subject_id):
+def calculate_watwin(session_table):
     # Watson(2013) requires 1) deletion fixes 2) commented fixes during data preparation 3) error message generalization, we assume the dataset has fulfilled this requirement
-    subject_events = main_table.loc[main_table["SubjectID"] == subject_id]
-    subject_events.sort_values(by=['Order'])
-    compiles = subject_events[subject_events["EventType"] == "Compile"]
-    compile_errors = subject_events[subject_events["EventType"] == "Compile.Error"]
+    session_table = session_table.sort_values(by=['Order'])
+    compiles = session_table[session_table["EventType"] == "Compile"]
+    compile_errors = session_table[session_table["EventType"] == "Compile.Error"]
 
     if len(compiles) <= 1:
         return None
@@ -161,8 +146,10 @@ def calculate_watwin(main_table, subject_id):
     watwin = (score / 35.) / (len(compiles) - 1.)
     return watwin
 
+
 if __name__ == "__main__":
     read_path = "./data"
+    # read_path = "./data/DataChallenge"
     write_path = "./out/WatWin.csv"
 
     if len(sys.argv) > 1:
@@ -170,8 +157,11 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table_df = pd.read_csv(os.path.join(read_path, "./MainTable.csv"))
-    checker = check_attr(main_table_df)
+    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
+    main_table_df = data_filter.filter_dataset(main_table_df)
+    checker = utils.check_attributes(main_table_df, ["SubjectID", "Order", "EventType", "EventID", "CodeStateID",
+                                                     "ParentEventID", "CompileMessageData", "CompileMessageType",
+                                                     "SourceLocation", ["ServerTimestamp", "ClientTimestamp"]])
     if checker:
         time_arr = time_perp(main_table_df)[0]
         mean_dict = time_perp(main_table_df)[1]

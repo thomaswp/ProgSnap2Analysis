@@ -19,25 +19,9 @@ import pathlib
 import utils
 
 GAP_TIME = 1200
-MIN_SESSIONS_Z = -1
-MIN_COMPILES = 3
+MIN_SESSIONS_Z = -2
+MIN_COMPILES = 4
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
-
-
-def check_attr(main_table_df):
-    # Check whether the dataset has required attributes, if not, pop-up warnings:
-    for required_attr in ["SubjectID", ["ProblemID", "AssignmentID"], "EventType", "CodeStateID",
-                          ["ClientTimestamp", "ServerTimestamp"]]:
-        if not isinstance(required_attr, list):
-            required_attr = [required_attr]
-        has = False
-        for attr in required_attr:
-            if attr in main_table_df:
-                has = True
-        if not has:
-            print("One of the following attributes is required: ", required_attr + " !")
-            return False
-    return True
 
 
 def assign_session_ids(main_table_df, gap_time=GAP_TIME):
@@ -51,7 +35,7 @@ def assign_session_ids(main_table_df, gap_time=GAP_TIME):
     if timestamp_field is None:
         raise Exception("No Timestamp!")
 
-    main_table_df.sort_values(by=['SubjectID', 'Order'])
+    main_table_df.sort_values(['SubjectID', 'Order'], inplace=True)
 
     subject_id = None
     session_id = 0
@@ -59,12 +43,14 @@ def assign_session_ids(main_table_df, gap_time=GAP_TIME):
     timestamps = [datetime.datetime.strptime(main_table_df[timestamp_field].iloc[i], DATE_FORMAT)
                   for i in range(len(main_table_df))]
 
+    subject_changes = 0
     for i in range(len(main_table_df)):
         timestamp = timestamps[i]
         if subject_id != main_table_df["SubjectID"].iloc[i]:
             last_timestamp = datetime.datetime.strptime(main_table_df[timestamp_field].iloc[i], DATE_FORMAT)
             session_id = session_id + 1
             subject_id = main_table_df["SubjectID"].iloc[i]
+            subject_changes += 1
 
         # Store separately for efficiency
         session_ids.append(session_id)
@@ -77,9 +63,10 @@ def assign_session_ids(main_table_df, gap_time=GAP_TIME):
     main_table_df["SessionID"] = session_ids
 
     print()
+    print("Subjects: " + str(subject_changes))
     print("Assigned %d unique sessionIDs" % session_id)
 
-    main_table_df.sort_values(by=['Order'])
+    main_table_df.sort_values(['Order'], inplace=True)
     return main_table_df
 
 
@@ -88,6 +75,7 @@ def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, 
     n_students = len(set(main_table_df["SubjectID"]))
     n_sessions = len(set(main_table_df["SessionID"]))
 
+    print("Filtering sessions...")
     compile_sessions = main_table_df[main_table_df["EventType"] == "Compile"]["SessionID"]
     compiles_count_map = {session_id: np.sum(compile_sessions == session_id)
                           for session_id in set(main_table_df["SessionID"])}
@@ -104,6 +92,7 @@ def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, 
           (n_sessions - len(session_to_keep), min_compiles, mean_compiles, sd_compiles,
            n_students - len(set(main_table_df["SubjectID"]))))
 
+    print("Filtering students...")
     session_count_map = {subject_id: len(set(main_table_df[main_table_df["SubjectID"] == subject_id]["SessionID"]))
                          for subject_id in set(main_table_df["SubjectID"])}
     # print(session_count_map)
@@ -162,7 +151,7 @@ def get_table_1(main_table_df):
     ])
 
     return [system, language, students_num, exercises_num, sets_num, compile_events, perc_w_error,
-            sessions_per_student]
+            sessions_per_student, len(main_table_df)]
 
 
 def get_table_2(main_table_df):
@@ -213,7 +202,8 @@ if __name__ == "__main__":
     # subjects = list(set(main_table['SubjectID']))[0:60]
     # main_table = main_table[main_table['SubjectID'].isin(subjects)].copy()
 
-    checker = check_attr(main_table)
+    checker = utils.check_attributes(main_table, ["SubjectID", ["ProblemID", "AssignmentID"], "EventType",
+                                                  "CodeStateID", ["ClientTimestamp", "ServerTimestamp"]])
     if checker:
         main_table = assign_session_ids(main_table)
         table_1 = get_table_1(main_table)
@@ -227,7 +217,7 @@ if __name__ == "__main__":
             obj = csv.writer(csvfile)
             obj.writerow(
                 ['Filtered', 'System', 'Language', 'Students', 'Exercises', 'in # Sets', 'Compilation Events',
-                 '% with Error', 'Sessions per Student'])
+                 '% with Error', 'Sessions per Student', 'Total Events'])
             for name, table in {'No': table_1, 'Yes': table_2}.items():
                 obj.writerow([name] + table)
 

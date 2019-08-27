@@ -1,5 +1,6 @@
 import pathlib
 import csv
+import numpy as np
 
 
 # Print iterations progress
@@ -24,6 +25,21 @@ def print_progress_bar(iteration, total, prefix ='', suffix ='', decimals = 1, l
         print()
 
 
+def check_attributes(main_table, attributes):
+    # Check whether the dataset has required attributes, if not, pop-up warnings:
+    for required_attr in attributes:
+        if not isinstance(required_attr, list):
+            required_attr = [required_attr]
+        has = False
+        for attr in required_attr:
+            if attr in main_table:
+                has = True
+        if not has:
+            print("One of the following attributes is required: " + required_attr + " !")
+            return False
+    return True
+
+
 def write_metric_map(name, metric_map, path):
     pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, 'w', encoding='utf8') as file:
@@ -33,45 +49,50 @@ def write_metric_map(name, metric_map, path):
             writer.writerow({"SubjectID": subject_id, name: value})
 
 
-# TODO: Change to calculate over sessions
 def calculate_metric_map(main_table, metric_fn):
     subject_ids = set(main_table["SubjectID"])
     metric_map = {}
+    dropped = 0
     for i, subject_id in enumerate(subject_ids):
-        metric_map[subject_id] = metric_fn(main_table, subject_id)
+        subject_events = main_table[main_table["SubjectID"] == subject_id]
+        metrics = []
+        for session_id in set(subject_events["SessionID"]):
+            metric = metric_fn(subject_events[subject_events["SessionID"] == session_id])
+            if metric is not None:
+                metrics.append(metric)
+        # print(metrics)
+        if len(metrics) == 0:
+            dropped += 1
+            continue
+        metric_map[subject_id] = np.mean(metrics)
         print_progress_bar(i + 1, len(subject_ids))
+    print("Dropped %d subjects with no pairs of compile events" % dropped)
     return metric_map
 
 
 # TODO: check if code is the same
 def extract_compile_pair_indexes(compiles):
     pairs = []
-    for i in range(len(compiles) - 1):
+    start = 0
+    for i in range(1, len(compiles) - 1):
         # Only look at consecutive compiles within a single assignment/problem/session
         changed_segments = False
         for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
             if segment_id not in compiles:
                 continue
-            if compiles[segment_id].iloc[i] != compiles[segment_id].iloc[i + 1]:
+            if compiles[segment_id].iloc[i] != compiles[segment_id].iloc[start]:
                 changed_segments = True
                 break
         if changed_segments:
+            # If we're in a new Session or Problem, start a new pair
+            start = i
             continue
 
-        pair_count += 1
+        if compiles["CodeStateID"].iloc[start] == compiles["CodeStateID"].iloc[i]:
+            # If the code hasn't changed, skip this end pair
+            continue
 
-        # Get all compile errors associated with compile events e1 and e2
-        e1_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[i]]
-        e2_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[i + 1]]
-
-        score_delta = 0
-        if len(e1_errors) > 0 and len(e2_errors) > 0:
-            # If both compiles resulted in errors, add 8 to the score
-            score_delta += 8
-
-            # Get the set of errors shared by both compiles
-            # TODO: Check how Jadud handled multiple compile errors (don't think he did)
-            shared_errors = set(e1_errors["CompileMessageType"]).intersection(set(e2_errors["CompileMessageType"]))
-            if len(shared_errors) > 0:
-                score_delta += 3
-        score += score_delta
+        # If this is good, add the pair and set this code to the start of the next pair
+        pairs.append([start, i])
+        start = i
+    return pairs
