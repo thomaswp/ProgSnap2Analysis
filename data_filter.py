@@ -17,22 +17,22 @@ import os
 import csv
 import pathlib
 import utils
+import logging
 
 GAP_TIME = 1200
 MIN_SESSIONS_Z = -2
 MIN_COMPILES = 4
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
-VERSION = '2019.09.28.A'
 
-print('Error Metric Analysis Version: ' + VERSION)
+out = logging.getLogger()
 
 
 def assign_session_ids(main_table_df, gap_time=GAP_TIME):
     if "SessionID" in main_table_df:
         return main_table_df
 
-    print("Assigning session IDs:")
+    out.info("Assigning session IDs:")
     for tsf in ["ServerTimestamp", "ClientTimestamp"]:
         if tsf in main_table_df:
             timestamp_field = tsf
@@ -66,9 +66,8 @@ def assign_session_ids(main_table_df, gap_time=GAP_TIME):
 
     main_table_df["SessionID"] = session_ids
 
-    print()
-    print("Subjects: " + str(subject_changes))
-    print("Assigned %d unique sessionIDs" % session_id)
+    out.info("Subjects: " + str(subject_changes))
+    out.info("Assigned %d unique sessionIDs" % session_id)
 
     main_table_df.sort_values(['Order'], inplace=True)
     return main_table_df
@@ -79,11 +78,11 @@ def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, 
     n_students = len(set(main_table_df["SubjectID"]))
     n_sessions = len(set(main_table_df["SessionID"]))
 
-    print("Filtering sessions...")
+    out.info("Filtering sessions...")
     compile_sessions = main_table_df[main_table_df["EventType"] == "Compile"]["SessionID"]
     compiles_count_map = {session_id: np.sum(compile_sessions == session_id)
                           for session_id in set(main_table_df["SessionID"])}
-    # print(compiles_count_map)
+    out.debug("Compiles count map: %s" % compiles_count_map)
 
     mean_compiles = np.mean(list(compiles_count_map.values()))
     sd_compiles = np.std(list(compiles_count_map.values()))
@@ -92,14 +91,14 @@ def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, 
                        if compiles_count_map[session_id] >= min_compiles]
 
     main_table_df = main_table_df[main_table_df["SessionID"].isin(session_to_keep)]
-    print("Dropping %d sessions with < %.02f compiles (M=%.02f and SD=%.02f), removing %s students" %
-          (n_sessions - len(session_to_keep), min_compiles, mean_compiles, sd_compiles,
-           n_students - len(set(main_table_df["SubjectID"]))))
+    out.info("Dropping %d sessions with < %.02f compiles (M=%.02f and SD=%.02f), removing %s students" %
+            (n_sessions - len(session_to_keep), min_compiles, mean_compiles, sd_compiles,
+             n_students - len(set(main_table_df["SubjectID"]))))
 
-    print("Filtering students...")
+    out.info("Filtering students...")
     session_count_map = {subject_id: len(set(main_table_df[main_table_df["SubjectID"] == subject_id]["SessionID"]))
                          for subject_id in set(main_table_df["SubjectID"])}
-    # print(session_count_map)
+    out.debug("Session count map: %s" % session_count_map)
     mean_sessions = np.mean(list(session_count_map.values()))
     sd_sessions = np.std(list(session_count_map.values()))
     if sd_sessions == 0:
@@ -108,8 +107,8 @@ def filter_dataset(main_table_df, gap_time=GAP_TIME, min_compiles=MIN_COMPILES, 
     students_to_keep = [subject_id for subject_id in session_count_map.keys()
                         if (session_count_map[subject_id] - mean_sessions) / sd_sessions >= min_sessions_z]
 
-    print("Dropping %d students with with z-score < %.02f for sessions (M=%.02f and SD=%.02f)" %
-          (len(session_count_map) - len(students_to_keep), min_sessions_z, mean_sessions, sd_sessions))
+    out.info("Dropping %d students with with z-score < %.02f for sessions (M=%.02f and SD=%.02f)" %
+            (len(session_count_map) - len(students_to_keep), min_sessions_z, mean_sessions, sd_sessions))
 
     main_table_df = main_table_df[main_table_df["SubjectID"].isin(students_to_keep)]
 
@@ -193,7 +192,7 @@ def get_table_2(main_table_df):
 
 if __name__ == "__main__":
     read_path = "./data/"
-    # read_path = "./data/PCRS"
+    # read_path = "./data/DataChallenge"
     write_dir = "./out"
 
     if len(sys.argv) > 1:
@@ -211,10 +210,10 @@ if __name__ == "__main__":
     if checker:
         main_table = assign_session_ids(main_table)
         table_1 = get_table_1(main_table)
-        print(table_1)
+        out.info(table_1)
 
         table_2 = get_table_1(filter_dataset(main_table))
-        print(table_2)
+        out.info(table_2)
 
         pathlib.Path(write_dir).parent.mkdir(parents=True, exist_ok=True)
         with open(os.path.join(write_dir, 'stats.csv'), 'w', newline='') as csvfile:

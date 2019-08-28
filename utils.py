@@ -1,6 +1,33 @@
 import pathlib
 import csv
 import numpy as np
+import logging
+import sys
+import os
+
+out = logging.getLogger()
+VERSION = '2019.09.28.A'
+
+
+def setup_logging(out_dir):
+    if out.hasHandlers():
+        return
+    print("Setting up logger...")
+    pathlib.Path(out_dir).parent.mkdir(parents=True, exist_ok=True)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
+    file_handler = logging.FileHandler(os.path.join(out_dir, "log.txt"))
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+    stream_handler.setLevel(logging.INFO)
+    out.addHandler(file_handler)
+    out.addHandler(stream_handler)
+    out.setLevel(logging.DEBUG)
+    out.info("Logger initialized for version: " + VERSION)
+
+
+setup_logging("out")
 
 
 # Print iterations progress
@@ -35,7 +62,7 @@ def check_attributes(main_table, attributes):
             if attr in main_table:
                 has = True
         if not has:
-            print("One of the following attributes is required: " + required_attr + " !")
+            out.info("One of the following attributes is required: " + required_attr + " !")
             return False
     return True
 
@@ -50,7 +77,7 @@ def write_metric_map(name, metric_map, path):
 
 
 def calculate_metric_map(main_table, metric_fn):
-    print("Calculating error metric...")
+    out.info("Calculating error metric...")
     subject_ids = set(main_table["SubjectID"])
     metric_map = {}
     dropped = 0
@@ -62,13 +89,13 @@ def calculate_metric_map(main_table, metric_fn):
             metric = metric_fn(subject_events[subject_events["SessionID"] == session_id])
             if metric is not None:
                 metrics.append(metric)
-        # print(metrics)
+        out.debug("Metrics %d: %s" % (i, metrics))
         if len(metrics) == 0:
             dropped += 1
             continue
         metric_map[subject_id] = np.mean(metrics)
-    print()
-    print("Dropped %d subjects with no pairs of compile events" % dropped)
+
+    out.info("Dropped %d subjects with no pairs of compile events" % dropped)
     return metric_map
 
 

@@ -3,6 +3,9 @@ import sys
 import os
 import utils
 import data_filter
+import logging
+
+out = logging.getLogger()
 
 
 def calculate_eq(session_table):
@@ -33,7 +36,7 @@ def calculate_eq(session_table):
             shared_errors = set(e1_errors["CompileMessageType"]).intersection(set(e2_errors["CompileMessageType"]))
             if len(shared_errors) > 0:
                 score_delta += 3
-        # print(score_delta)
+        out.log(0, score_delta)
         score += score_delta / 11
 
     return score / len(compile_pairs)
@@ -41,7 +44,7 @@ def calculate_eq(session_table):
 
 if __name__ == "__main__":
     read_path = "./data"
-    # read_path = "./data/CloudCoder"
+    # read_path = "./data/PCRS"
     write_path = "./out/EQ.csv"
 
     if len(sys.argv) > 1:
@@ -56,6 +59,6 @@ if __name__ == "__main__":
                                                      "CompileMessageType"])
     if checker:
         eq_map = utils.calculate_metric_map(main_table_df, calculate_eq)
-        print(eq_map)
+        out.info(eq_map)
         utils.write_metric_map("ErrorQuotient", eq_map, write_path)
 

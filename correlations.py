@@ -3,7 +3,9 @@ import sys
 import os
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
+import logging
 
+out = logging.getLogger()
 
 def calculate_correlation_pvalues(df, fn=pearsonr):
     df = df.dropna()._get_numeric_data()
@@ -32,7 +34,7 @@ if __name__ == "__main__":
         path = os.path.join(out_dir, metric + ".csv")
         if not os.path.isfile(path):
             continue
-        print("Found: " + path)
+        out.info("Found: " + path)
         metric_table = pd.read_csv(path)
         count_dict[metric] = metric_table.shape[0]
         grades_table = grades_table.merge(metric_table, on=["SubjectID"])
@@ -41,16 +43,16 @@ if __name__ == "__main__":
     metrics = grades_table.drop("SubjectID", axis=1)
 
     pearson = metrics.corr(method="pearson")
-    print(pearson)
+    out.info(pearson)
     pearson.to_csv(os.path.join(out_dir, "corr_pearson.csv"))
     calculate_correlation_pvalues(metrics).to_csv(os.path.join(out_dir, "corr_pearson_p.csv"))
 
     spearman = grades_table.drop("SubjectID", axis=1).corr(method="spearman")
-    print(spearman)
+    out.info(spearman)
     spearman.to_csv(os.path.join(out_dir, "corr_spearman.csv"))
     calculate_correlation_pvalues(metrics, spearmanr).to_csv(os.path.join(out_dir, "corr_spearman_p.csv"))
 
-    print(count_dict)
+    out.info(count_dict)
     with open(os.path.join(out_dir, "counts.txt"), 'w') as file:
         file.write(str(count_dict))
 
