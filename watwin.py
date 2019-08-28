@@ -152,7 +152,7 @@ def calculate_watwin(session_table):
 if __name__ == "__main__":
     read_path = "./data"
     # read_path = "./data/DataChallenge"
-    write_path = "./out/WatWin.csv"
+    write_path = "./out/Watwin.csv"
 
     if len(sys.argv) > 1:
         read_path = sys.argv[1]
