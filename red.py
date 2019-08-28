@@ -118,8 +118,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         write_path = sys.argv[2]
 
-    main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
-    main_table_df = data_filter.filter_dataset(main_table_df)
+    main_table_df = data_filter.load_main_table(read_path)
     checker = utils.check_attributes(main_table_df, ["SubjectID", "Order", "EventType", "EventID", "ParentEventID",
                                                      "CompileMessageType"])
     if checker:

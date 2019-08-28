@@ -24,6 +24,7 @@ MIN_SESSIONS_Z = -2
 MIN_COMPILES = 4
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
+CACHE_TABLE_PATH = "cache/MainTable_filtered_" + utils.VERSION + ".csv"
 
 out = logging.getLogger()
 
@@ -190,6 +191,17 @@ def get_table_2(main_table_df):
     return dataset_name, GAP_TIME, MIN_SESSIONS_Z, students, compilation_event, perc_of_total, sessions
 
 
+def load_main_table(read_dir, filter=True, from_cache=True):
+    if filter and from_cache and os.path.exists(CACHE_TABLE_PATH):
+        out.info("Loading from cached file: %s" % CACHE_TABLE_PATH)
+        return pd.read_csv(CACHE_TABLE_PATH)
+
+    main_table_df = pd.read_csv(os.path.join(read_dir, "MainTable.csv"))
+    if filter:
+        main_table_df = filter_dataset(main_table_df)
+    return main_table_df
+
+
 if __name__ == "__main__":
     read_path = "./data/"
     # read_path = "./data/DataChallenge"
@@ -212,8 +224,12 @@ if __name__ == "__main__":
         table_1 = get_table_1(main_table)
         out.info(table_1)
 
-        table_2 = get_table_1(filter_dataset(main_table))
+        main_table = filter_dataset(main_table)
+        table_2 = get_table_1(main_table)
         out.info(table_2)
+
+        pathlib.Path(CACHE_TABLE_PATH).parent.mkdir(parents=True, exist_ok=True)
+        main_table.to_csv(CACHE_TABLE_PATH)
 
         pathlib.Path(write_dir).parent.mkdir(parents=True, exist_ok=True)
         with open(os.path.join(write_dir, 'stats.csv'), 'w', newline='') as csvfile:

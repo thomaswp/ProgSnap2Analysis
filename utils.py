@@ -13,7 +13,7 @@ def setup_logging(out_dir):
     if out.hasHandlers():
         return
     print("Setting up logger...")
-    pathlib.Path(out_dir).parent.mkdir(parents=True, exist_ok=True)
+    pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
     formatter = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
     file_handler = logging.FileHandler(os.path.join(out_dir, "log.txt"))
     file_handler.setFormatter(formatter)
