@@ -55,6 +55,7 @@ def calculate_metric_map(main_table, metric_fn):
     metric_map = {}
     dropped = 0
     for i, subject_id in enumerate(subject_ids):
+        print_progress_bar(i + 1, len(subject_ids))
         subject_events = main_table[main_table["SubjectID"] == subject_id]
         metrics = []
         for session_id in set(subject_events["SessionID"]):
@@ -66,7 +67,7 @@ def calculate_metric_map(main_table, metric_fn):
             dropped += 1
             continue
         metric_map[subject_id] = np.mean(metrics)
-        print_progress_bar(i + 1, len(subject_ids))
+    print()
     print("Dropped %d subjects with no pairs of compile events" % dropped)
     return metric_map
 
