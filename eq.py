@@ -33,6 +33,7 @@ def calculate_eq(session_table):
             shared_errors = set(e1_errors["CompileMessageType"]).intersection(set(e2_errors["CompileMessageType"]))
             if len(shared_errors) > 0:
                 score_delta += 3
+        # print(score_delta)
         score += score_delta / 11
 
     return score / len(compile_pairs)
@@ -40,7 +41,7 @@ def calculate_eq(session_table):
 
 if __name__ == "__main__":
     read_path = "./data"
-    # read_path = "./data/PCRS"
+    # read_path = "./data/CloudCoder"
     write_path = "./out/EQ.csv"
 
     if len(sys.argv) > 1:
@@ -50,6 +51,7 @@ if __name__ == "__main__":
 
     main_table_df = pd.read_csv(os.path.join(read_path, "MainTable.csv"))
     main_table_df = data_filter.filter_dataset(main_table_df)
+    # main_table_df = data_filter.assign_session_ids(main_table_df)
     checker = utils.check_attributes(main_table_df, ["SubjectID", "Order", "EventType", "EventID", "ParentEventID",
                                                      "CompileMessageType"])
     if checker:

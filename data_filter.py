@@ -23,6 +23,10 @@ MIN_SESSIONS_Z = -2
 MIN_COMPILES = 4
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
+VERSION = '2019.09.28.A'
+
+print('Error Metric Analysis Version: ' + VERSION)
+
 
 def assign_session_ids(main_table_df, gap_time=GAP_TIME):
     if "SessionID" in main_table_df:
