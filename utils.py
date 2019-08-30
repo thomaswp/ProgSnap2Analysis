@@ -6,7 +6,7 @@ import sys
 import os
 
 out = logging.getLogger()
-VERSION = '2019.09.28.A'
+VERSION = 'v2019.08.30'
 
 
 def setup_logging(out_dir):

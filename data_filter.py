@@ -24,7 +24,8 @@ MIN_SESSIONS_Z = -2
 MIN_COMPILES = 4
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
-CACHE_TABLE_PATH = "cache/MainTable_filtered_" + utils.VERSION + ".csv"
+CACHE_VERSION = '2019.08.28.A'
+CACHE_TABLE_PATH = "cache/MainTable_filtered_" + CACHE_VERSION + ".csv"
 
 out = logging.getLogger()
 
