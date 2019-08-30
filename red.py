@@ -40,7 +40,7 @@ def findconsqerr(df, df_errors, score, start_pos, end_pos):
                         set(e2_errors["CompileMessageType"]))
 
                     # If e1 and e2 contain the same error, seek from e2 to the end of event sequence by changing idx
-                    if len(e2_errors) > 0 and len(shared_errors) > 0:
+                    if len(shared_errors) > 0:
                         idx = idx + 1
                         count = count + 1
                     else:
@@ -73,39 +73,6 @@ def calculate_red(session_table):
     red = red / (len(compiles) - 1)
 
     return red
-
-
-def calculate_red(session_table):
-    session_table = session_table.sort_values(by=['Order'])
-    compiles = session_table[session_table["EventType"] == "Compile"]
-    compile_errors = session_table[session_table["EventType"] == "Compile.Error"]
-
-    compile_pairs = utils.extract_compile_pair_indexes(compiles)
-    if len(compile_pairs) == 0:
-        return None
-
-    score = 0
-    for pair in compile_pairs:
-        # Get all compile errors associated with compile events e1 and e2
-        e1 = pair[0]
-        e2 = pair[1]
-
-        e1_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[e1]]
-        e2_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[e2]]
-
-        score_delta = 0
-        if len(e1_errors) > 0 and len(e2_errors) > 0:
-            # If both compiles resulted in errors, add 8 to the score
-            score_delta += 8
-
-            # Get the set of errors shared by both compiles
-            # TODO: Check how Jadud handled multiple compile errors (don't think he did)
-            shared_errors = set(e1_errors["CompileMessageType"]).intersection(set(e2_errors["CompileMessageType"]))
-            if len(shared_errors) > 0:
-                score_delta += 3
-        score += score_delta / 11
-
-    return score / len(compile_pairs)
 
 
 if __name__ == "__main__":
