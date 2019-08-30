@@ -103,6 +103,7 @@ def calculate_watwin(session_table):
                     shared_errors = set(e1_errors["CompileMessageType"]).intersection(
                         set(e2_errors["CompileMessageType"]))
 
+                    # TODO: Don't just use the first compile message - use all
                     # if same full message
                     # We assume the attribute containing full message is CompileMessageData
                     e1_error_message = e1_errors["CompileMessageData"].iloc[0]
@@ -114,9 +115,14 @@ def calculate_watwin(session_table):
                         score += 4
                     # TODO: Watson (2013) requires for error line number of compiled code
                     # if same line
-                    if e1_errors["SourceLocation"].iloc[0].split(':')[1] == \
-                            e2_errors["SourceLocation"].iloc[0].split(':')[1]:
-                        score += 2
+                    try:
+                        if e1_errors["SourceLocation"].iloc[0].split(':')[1] == \
+                                e2_errors["SourceLocation"].iloc[0].split(':')[1]:
+                            score += 2
+                    except:
+                        out.info("Improperly formatted source location in: [%s, %s]" % (
+                            e1_errors["SourceLocation"].iloc[0], e2_errors["SourceLocation"].iloc[0]))
+
                     # if time < M - 1SD
                     if compiles["TimeEst"].iloc[i] < (
                             compiles["TimeMean"].iloc[i] - compiles["TimeStd"].iloc[i]):
