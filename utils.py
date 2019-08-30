@@ -72,7 +72,7 @@ def write_metric_map(name, metric_map, path):
     with open(path, 'w', encoding='utf8') as file:
         writer = csv.DictWriter(file, fieldnames=["SubjectID", name], lineterminator='\n')
         writer.writeheader()
-        for subject_id, value in metric_map.items():
+        for subject_id, value in sorted(metric_map.items()):
             writer.writerow({"SubjectID": subject_id, name: value})
 
 
@@ -99,29 +99,48 @@ def calculate_metric_map(main_table, metric_fn):
     return metric_map
 
 
-# TODO: check if code is the same
-def extract_compile_pair_indexes(compiles):
-    pairs = []
-    start = 0
-    for i in range(1, len(compiles) - 1):
-        # Only look at consecutive compiles within a single assignment/problem/session
+# TODO: Currently we don't deal with multiple files at all, which is only ok for our datasets
+def get_segments_indexes(compiles):
+    """We define a segment as a series of compiles within a single problem/session, excluding compiles where the
+    code did not change. This method returns a list of lists of indices the comprise separate segments
+    """
+    if len(compiles) == 0:
+        return []
+
+    segments = []
+    current_segment = [0]
+    for i in range(1, len(compiles)):
+        if compiles["CodeStateID"].iloc[i] == compiles["CodeStateID"].iloc[i - 1]:
+            # If the code hasn't changed, skip this compile
+            continue
+
+        # A segment consists of consecutive compiles within a single assignment/problem/session
         changed_segments = False
         for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
             if segment_id not in compiles:
                 continue
-            if compiles[segment_id].iloc[i] != compiles[segment_id].iloc[start]:
+            if compiles[segment_id].iloc[i] != compiles[segment_id].iloc[i - 1]:
                 changed_segments = True
                 break
+
         if changed_segments:
-            # If we're in a new Session or Problem, start a new pair
-            start = i
-            continue
+            segments.append(current_segment)
+            current_segment = []
 
-        if compiles["CodeStateID"].iloc[start] == compiles["CodeStateID"].iloc[i]:
-            # If the code hasn't changed, skip this end pair
-            continue
+        current_segment.append(i)
 
-        # If this is good, add the pair and set this code to the start of the next pair
-        pairs.append([start, i])
-        start = i
+    if len(current_segment) > 0:
+        segments.append(current_segment)
+
+    return segments
+
+
+def extract_compile_pair_indexes(compiles):
+    pairs = []
+    segments = get_segments_indexes(compiles)
+    for segment in segments:
+        for i in range(1, len(segment)):
+            pairs.append([segment[i - 1], segment[i]])
     return pairs
+
+
