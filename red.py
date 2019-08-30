@@ -1,59 +1,9 @@
-import pandas as pd
 import sys
-import os
 import utils
 import data_filter
 import logging
 
 out = logging.getLogger()
-
-def findconsqerr(df, df_errors, score, start_pos, end_pos):
-    idx = start_pos + 1
-    if start_pos + 1 <= end_pos:
-        for i in range(start_pos, end_pos):
-            # Only look at consecutive compiles within a single assignment/problem/session
-            # TODO: Jadud (2006) doesn't specify whether a session can cross problems, but we assume not
-            changed_segments = False
-            for segment_id in ["SessionID", "ProblemID", "AssignmentID"]:
-                if segment_id not in df:
-                    continue
-                if df[segment_id].iloc[i] != df[segment_id].iloc[i + 1]:
-                    changed_segments = True
-                    break
-            if changed_segments:
-                continue
-
-            idx = i + 1
-            count = 0
-
-            # Get all compile errors associated with compile events e1 and e2
-            e1_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[i]]
-
-            if len(e1_errors) > 0:
-                # If e1 contains an error, then search from e1 to the end of event sequence.
-                for j in range(i + 1, len(df)):
-                    # Becker(2016) doesn't specify whether a sequence can cross problems, we assume yes
-                    e2_errors = df_errors[df_errors["ParentEventID"] == df["EventID"].iloc[j]]
-
-                    # Get the set of errors shared by both compiles
-                    shared_errors = set(e1_errors["CompileMessageType"]).intersection(
-                        set(e2_errors["CompileMessageType"]))
-
-                    # If e1 and e2 contain the same error, seek from e2 to the end of event sequence by changing idx
-                    if len(shared_errors) > 0:
-                        idx = idx + 1
-                        count = count + 1
-                    else:
-                        break
-                # calculate red for repeated error strings
-                score += (count ** 2) / (count + 1)
-                break
-        # keep calculate red from current e2 to the end of event
-        score = findconsqerr(df, df_errors, score, idx, end_pos)
-
-        return score
-    else:
-        return score
 
 
 def calculate_red(session_table):
@@ -61,16 +11,36 @@ def calculate_red(session_table):
     compiles = session_table[session_table["EventType"] == "Compile"]
     compile_errors = session_table[session_table["EventType"] == "Compile.Error"]
 
-    if len(compiles) <= 1:
+    red = 0
+    divisor = 0
+
+    # We operate over individual segments (working on the same problem), since that's how RED was designed to operate
+    # i.e. we don't consider an error repeated if it occurs across problems
+    segments = utils.get_segments_indexes(compiles)
+    for segment in segments:
+        repeated = 0
+        for i in range(1, len(segment)):
+            divisor += 1
+            e1_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[segment[i - 1]]]
+            e2_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[segment[i]]]
+            shared_errors = set(e1_errors["CompileMessageType"]).intersection(set(e2_errors["CompileMessageType"]))
+            if len(shared_errors) > 0:
+                # If there is a shared error, we increment the r count
+                repeated = repeated + 1
+            else:
+                # Otherwise, there was a new error or no errors, so we add to RED and reset the repeated count
+                if repeated > 0:
+                    red += (repeated ** 2) / (repeated + 1)
+                repeated = 0
+
+        if repeated > 0:
+            red += (repeated ** 2) / (repeated + 1)
+
+    if divisor == 0:
         return None
 
-    start = 0
-    end = len(compiles) - 1
-    score = 0
-    red = findconsqerr(compiles, compile_errors, score, start, end)
-
     # TODO: No official way to normalize RED, so we divide by the number of compiles
-    red = red / (len(compiles) - 1)
+    red = red / divisor
 
     return red
 

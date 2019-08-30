@@ -4,3 +4,5 @@ data
 out
 __pycache__
 cache
+.RData
+.Rhistory
