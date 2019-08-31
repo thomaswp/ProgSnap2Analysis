@@ -1,4 +1,5 @@
 library(ggplot2)
+library(scales)
 
 
 data <- data.frame()
@@ -22,9 +23,16 @@ for (dir in c("CC", "CWO", "BlockPy", "ITAP", "PCRS")) {
   }
 }
 
+# 5x3.5
 ggplot(data, aes(Value)) + geom_density(fill="gray") + 
+  scale_x_continuous(breaks = c(0.5)) + 
+  scale_y_continuous(name="Density") +
+  theme_bw() + #ggtitle("Metric Distributions") +
+  facet_grid(Metric ~ Dataset)
+
+ggplot(data, aes(Value)) + geom_histogram(bins=6, aes(y=..density..)) + 
   scale_x_continuous(breaks = c(0, 0.5, 1)) + 
-  scale_y_continuous(name="Density", limits=c(0,6)) +
+  scale_y_continuous(name="Density", labels=percent_format()) +
   theme_bw() + #ggtitle("Metric Distributions") +
   facet_grid(Metric ~ Dataset)
 
