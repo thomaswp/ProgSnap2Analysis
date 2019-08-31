@@ -62,7 +62,7 @@ def check_attributes(main_table, attributes):
             if attr in main_table:
                 has = True
         if not has:
-            out.info("One of the following attributes is required: " + required_attr + " !")
+            out.warning("One of the following attributes is required: %s!" % required_attr)
             return False
     return True
 
