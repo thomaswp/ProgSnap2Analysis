@@ -136,7 +136,7 @@ def calculate_watwin(session_table):
                     if compiles["TimeEst"].iloc[i] < (
                             compiles["TimeMean"].iloc[i] - compiles["TimeStd"].iloc[i]):
                         score += 1
-                    # if time >= M + 1SD
+                    # if time >= M - 1SD
                     else:
                         # if time > M + 1SD
                         if compiles["TimeEst"].iloc[i] > (
