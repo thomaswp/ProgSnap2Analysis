@@ -121,26 +121,30 @@ def calculate_watwin(session_table):
                     if compiles["TimeEst"].iloc[i] < (
                             compiles["TimeMean"].iloc[i] - compiles["TimeStd"].iloc[i]):
                         score += 1
+                    # if time >= M - 1SD
                     else:
-                        # if time > M - 1SD
+                        # if time > M + 1SD
                         if compiles["TimeEst"].iloc[i] > (
-                                compiles["TimeMean"].iloc[i] - compiles["TimeStd"].iloc[i]):
+                                compiles["TimeMean"].iloc[i] + compiles["TimeStd"].iloc[i]):
                             score += 25
+                        # if time <= M + 1SD
                         else:
                             score += 15
-            # if later event does not have error
-            else:
-                # if time < M - 1SD
-                if compiles["TimeEst"].iloc[i] < (
-                        compiles["TimeMean"].iloc[i] - compiles["TimeStd"].iloc[i]):
-                    score += 1
+                # if later event does not have error
                 else:
-                    # if time > M - 1SD
-                    if compiles["TimeEst"].iloc[i] > (
+                    # if time < M - 1SD
+                    if compiles["TimeEst"].iloc[i] < (
                             compiles["TimeMean"].iloc[i] - compiles["TimeStd"].iloc[i]):
-                        score += 25
+                        score += 1
+                    # if time >= M + 1SD
                     else:
-                        score += 15
+                        # if time > M + 1SD
+                        if compiles["TimeEst"].iloc[i] > (
+                                compiles["TimeMean"].iloc[i] + compiles["TimeStd"].iloc[i]):
+                            score += 25
+                        # if time <= M + 1SD
+                        else:
+                            score += 15
 
     if pair_count == 0:
         return None
