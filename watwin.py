@@ -10,13 +10,20 @@ import logging
 out = logging.getLogger()
 
 def time_perp(main_table_df):
-    # Watson(2013) doesn't state how they get mean and sd, we assume both mean and sd calculated from all compilation pairs
+    out.info("Performing Watwin pre-processing...")
+    # Watson(2013) doesn't state how they get mean and sd, we assume both mean and sd calculated from all compilation
+    # pairs
     # Initialization:
     time_arr = {}
     mean_dict = {}
     std_dict = {}
 
-    for subj in set(main_table_df["SubjectID"]):
+    subjects = set(main_table_df["SubjectID"])
+    timer_index = 1
+    for subj in subjects:
+        utils.print_progress_bar(timer_index, len(subjects))
+        timer_index += 1
+
         current_df = main_table_df.loc[main_table_df["SubjectID"] == subj]
         current_df = current_df.sort_values(by=['Order'])
         compiles = current_df[current_df["EventType"] == "Compile"]
@@ -34,7 +41,9 @@ def time_perp(main_table_df):
                     e2_errors = compile_errors[compile_errors["ParentEventID"] == compiles["EventID"].iloc[i + 1]]
                     # If e1 compile resulted in error
                     if len(e1_errors) > 0:
-                        # Watson(2013) requires time estimate preparation before calculating score, we assume no invocation reported in dataset, which means using time difference of compilcation pairs directly
+                        # Watson(2013) requires time estimate preparation before calculating score, we assume no
+                        # invocation reported in dataset, which means using time difference of compilcation pairs
+                        # directly
                         datetimeFormat = '%Y-%m-%dT%H:%M:%S'
                         date1 = datetime.datetime.strptime(compiles["ServerTimestamp"].iloc[i + 1], datetimeFormat)
                         date2 = datetime.datetime.strptime(compiles["ServerTimestamp"].iloc[i], datetimeFormat)
@@ -56,11 +65,13 @@ def time_perp(main_table_df):
             std_time = 0
             std_dict[subj] = std_time
 
+    out.info("Finished Watwin pre-processing...")
     return time_arr, mean_dict, std_dict
 
 
 def calculate_watwin(session_table):
-    # Watson(2013) requires 1) deletion fixes 2) commented fixes during data preparation 3) error message generalization, we assume the dataset has fulfilled this requirement
+    # Watson(2013) requires 1) deletion fixes 2) commented fixes during data preparation 3) error message
+    # generalization, we assume the dataset has fulfilled this requirement
     session_table = session_table.sort_values(by=['Order'])
     compiles = session_table[session_table["EventType"] == "Compile"]
     compile_errors = session_table[session_table["EventType"] == "Compile.Error"]

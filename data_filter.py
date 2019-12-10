@@ -18,6 +18,7 @@ import csv
 import pathlib
 import utils
 import logging
+import re
 
 GAP_TIME = 1200
 MIN_SESSIONS_Z = -2
@@ -25,9 +26,26 @@ MIN_COMPILES = 4
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%S'
 
 CACHE_VERSION = '2019.08.28.A'
-CACHE_TABLE_PATH = "cache/MainTable_filtered_" + CACHE_VERSION + ".csv"
+CACHE_TABLE_NAME = "MainTable_filtered_" + CACHE_VERSION + ".csv"
 
 out = logging.getLogger()
+
+
+def get_valid_filename(s):
+    """
+    Return the given string converted to a string that can be used for a clean
+    filename. Remove leading and trailing spaces; convert other spaces to
+    underscores; and remove anything that is not an alphanumeric, dash,
+    underscore, or dot.
+    >>> get_valid_filename("john's portrait in 2004.jpg")
+    'johns_portrait_in_2004.jpg'
+    """
+    s = str(s).strip().replace(' ', '_')
+    return re.sub(r'(?u)[^-\w.]', '', s)
+
+
+def get_cache_table_path(data_dir):
+    return "cache/" + get_valid_filename(data_dir) + "/" + CACHE_TABLE_NAME
 
 
 def assign_session_ids(main_table_df, gap_time=GAP_TIME):
@@ -193,9 +211,10 @@ def get_table_2(main_table_df):
 
 
 def load_main_table(read_dir, filter=True, from_cache=True):
-    if filter and from_cache and os.path.exists(CACHE_TABLE_PATH):
-        out.info("Loading from cached file: %s" % CACHE_TABLE_PATH)
-        return pd.read_csv(CACHE_TABLE_PATH)
+    table_path = get_cache_table_path(read_dir)
+    if filter and from_cache and os.path.exists(table_path):
+        out.info("Loading from cached file: %s" % table_path)
+        return pd.read_csv(table_path)
 
     main_table_df = pd.read_csv(os.path.join(read_dir, "MainTable.csv"))
     if filter:
@@ -204,8 +223,7 @@ def load_main_table(read_dir, filter=True, from_cache=True):
 
 
 if __name__ == "__main__":
-    read_path = "./data/"
-    # read_path = "./data/DataChallenge"
+    read_path = "./data"
     write_dir = "./out"
 
     if len(sys.argv) > 1:
@@ -229,8 +247,9 @@ if __name__ == "__main__":
         table_2 = get_table_1(main_table)
         out.info(table_2)
 
-        pathlib.Path(CACHE_TABLE_PATH).parent.mkdir(parents=True, exist_ok=True)
-        main_table.to_csv(CACHE_TABLE_PATH)
+        table_path = get_cache_table_path(read_path)
+        pathlib.Path(table_path).parent.mkdir(parents=True, exist_ok=True)
+        main_table.to_csv(table_path)
 
         pathlib.Path(write_dir).parent.mkdir(parents=True, exist_ok=True)
         with open(os.path.join(write_dir, 'stats.csv'), 'w', newline='') as csvfile:
