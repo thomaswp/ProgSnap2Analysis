@@ -39,3 +39,12 @@ If these are not supplied, it will default to "./data" and "./out/".
 
 * Pandas
 * Numpy
+
+## Publications
+
+@inproceedings{price2020progsnap2,
+author     = {Price, Thomas and Hovemeyer, David and Rivers, Kelly and Bart, Austin and Gao, Ge and Kazerouni, Ayaan M. and Becker, Brett and Peterson, Andrew and Gusukuma, Luke and Edwards, Stephen H. and Babcock, David},
+title      = {{ProgSnap2}: A Flexible Format for Programming Process Data},
+booktitle  = {To be published in the Proceedings of the Annual Conference on Innovation and Technology in Computer Science Education},
+year       = {2020}
+}
